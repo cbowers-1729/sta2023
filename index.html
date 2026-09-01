@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STA-2023 · Statistical Analysis Tool</title>
+
+<!-- Cross-origin isolation for GitHub Pages so WebR's fast channel works.
+     coi-serviceworker.min.js must sit in this same folder. -->
+<script src="coi-serviceworker.min.js"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --paper:#f7f4ec; --paper-2:#efeadd; --ink:#211f1a; --ink-soft:#56514a;
+    --rule:#c9c1ad; --accent:#0f6b5c; --accent-soft:#d7e6e1;
+    --console-bg:#1d211f; --console-ink:#e7e3d6; --console-dim:#8f9a8f; --warn:#9c4a2e;
+  }
+  *{box-sizing:border-box} html,body{margin:0}
+  body{background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,sans-serif; font-size:16px; line-height:1.5; padding:0 20px 80px}
+  .wrap{max-width:980px; margin:0 auto}
+  header{padding:38px 0 24px; border-bottom:1px solid var(--rule); margin-bottom:30px}
+  h1{font-family:"Fraunces",serif; font-weight:600; font-size:30px; letter-spacing:-.01em; margin:0 0 6px}
+  .sub{color:var(--ink-soft); font-size:15px; margin:0}
+  .tag{display:inline-block; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+       color:var(--accent); border:1px solid var(--accent); border-radius:3px; padding:2px 8px; margin-bottom:14px}
+  .step{margin:26px 0}
+  .step-h{font-family:"Fraunces",serif; font-size:19px; font-weight:600; margin:0 0 12px;
+          display:flex; align-items:baseline; gap:10px}
+  .step-h .n{font-size:13px; color:var(--accent); font-family:"IBM Plex Mono",monospace}
+  .drop{display:block; position:relative; border:1.5px dashed var(--rule); border-radius:8px; background:var(--paper-2);
+        padding:26px; text-align:center; cursor:pointer; transition:.15s}
+  .drop:hover,.drop.armed{border-color:var(--accent); background:var(--accent-soft)}
+  /* iOS Safari can refuse to activate a display:none file input; clip it instead. */
+  .drop input[type=file]{position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+        overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0}
+  .drop .big{font-size:15px} .drop .small{font-size:13px; color:var(--ink-soft); margin-top:6px}
+  button.pick-btn{font:inherit; font-weight:600; font-size:15px; color:#fff; background:var(--accent);
+        border:0; border-radius:7px; padding:11px 22px; margin-bottom:12px; cursor:pointer;
+        transition:.15s; -webkit-appearance:none; touch-action:manipulation}
+  button.pick-btn:hover{filter:brightness(1.07)}
+  button.pick-btn:focus-visible{outline:2px solid var(--ink); outline-offset:2px}
+  .filename{font-family:"IBM Plex Mono",monospace; font-size:13px; color:var(--accent); margin-top:10px}
+  .roles{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  @media(max-width:640px){.roles{grid-template-columns:1fr}}
+  label.fld{display:block; font-size:13px; color:var(--ink-soft); margin-bottom:5px}
+  select, input[type=number], input[type=text]{width:100%; padding:9px 10px; font:inherit; font-size:14px; border:1px solid var(--rule);
+         border-radius:6px; background:#fff; color:var(--ink)}
+  select:focus, input[type=number]:focus, input[type=text]:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent)}
+  .run{margin-top:18px}
+  button.run-btn{font:inherit; font-weight:600; font-size:15px; color:#fff; background:var(--accent);
+       border:0; border-radius:7px; padding:11px 22px; cursor:pointer; transition:.15s}
+  button.run-btn:hover{filter:brightness(1.07)}
+  button.run-btn:disabled{background:var(--rule); cursor:not-allowed}
+  .status{font-size:13.5px; color:var(--ink-soft); margin:14px 0 0; min-height:20px}
+  .status .dot{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--accent);
+               margin-right:7px; vertical-align:middle}
+  .status.busy .dot{animation:pulse 1s infinite} @keyframes pulse{50%{opacity:.3}}
+  .err{color:var(--warn)}
+  .panels{display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:8px}
+  @media(max-width:820px){.panels{grid-template-columns:1fr}}
+  .panel-h{font-size:12px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-soft);
+           margin:0 0 8px; display:flex; justify-content:space-between; align-items:center}
+  pre.console{background:var(--console-bg); color:var(--console-ink); border-radius:8px; padding:16px;
+       font-family:"IBM Plex Mono",monospace; font-size:12.5px; line-height:1.55; overflow-x:auto; margin:0;
+       min-height:120px; white-space:pre}
+  .apa{background:#fff; border-radius:8px; padding:20px 20px 16px; border:1px solid var(--rule)}
+  .apa .tnum{font-style:italic; font-size:14px; margin:0}
+  .apa .ttitle{font-style:italic; font-size:14px; margin:0 0 12px; color:var(--ink-soft)}
+  table.apa-tbl{border-collapse:collapse; width:100%; font-size:14px}
+  table.apa-tbl th, table.apa-tbl td{padding:6px 10px; text-align:right}
+  table.apa-tbl th:first-child, table.apa-tbl td:first-child{text-align:left}
+  table.apa-tbl thead th{border-top:1.5px solid var(--ink); border-bottom:1px solid var(--ink); font-weight:600}
+  table.apa-tbl tbody tr:last-child td{border-bottom:1.5px solid var(--ink)}
+  table.apa-tbl td.num,table.apa-tbl th.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+  .apa .note{font-size:12.5px; color:var(--ink-soft); margin:11px 0 0; line-height:1.5}
+  .methodnote{margin-top:16px; font-size:12.5px; color:var(--ink-soft); line-height:1.55;
+    border-left:3px solid var(--accent); background:var(--accent-soft); padding:10px 14px; border-radius:0 6px 6px 0}
+  .methodnote b{color:var(--ink)}
+  .edaplots{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:18px}
+  @media(max-width:820px){.edaplots{grid-template-columns:1fr}}
+  .plotcard{background:#fff; border:1px solid var(--rule); border-radius:8px; padding:10px}
+  .plotcard .caprow{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 0 8px}
+  .plotcard .cap{font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); margin:0}
+  .plotcard .copy{flex:none}
+  .plotcard canvas{width:100%; height:auto; display:block}
+  .edaopts{display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start}
+  @media(max-width:640px){.edaopts{grid-template-columns:1fr}}
+  .chk{display:inline-flex; align-items:center; gap:8px; font-size:14px; cursor:pointer}
+  .chk input{width:auto; margin:0}
+  #edaStats{margin-top:4px}
+  .copy{font:inherit; font-size:12px; color:var(--accent); background:none; border:1px solid var(--accent);
+        border-radius:5px; padding:3px 10px; cursor:pointer}
+  .copy:hover{background:var(--accent-soft)}
+  .hidden{display:none}
+  .hint{font-size:12.5px; color:var(--ink-soft); margin-top:8px}
+  .rolewarn{font-size:12.5px; color:var(--warn); margin-top:8px; min-height:16px}
+  footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--rule); font-size:12.5px; color:var(--ink-soft)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="tag">STA-2023 · Elementary Statistics</div>
+    <h1>Statistical Analysis Tool</h1>
+    <p class="sub">Real R, run in your browser via WebR. Choose an analysis, upload your data, and read the results in both R's console output and an APA-style table.</p>
+  </header>
+
+  <div class="step">
+    <div class="step-h"><span class="n">01</span> Choose an analysis</div>
+    <select id="testSel"><option value="">— choose —</option></select>
+  </div>
+
+  <div class="step hidden" id="uploadStep">
+    <div class="step-h"><span class="n">02</span> Upload a CSV</div>
+    <div class="drop" id="drop">
+      <input type="file" id="file"
+             accept=".csv,.txt,text/csv,text/plain,text/comma-separated-values,application/csv,application/vnd.ms-excel">
+      <button type="button" class="pick-btn" id="pickBtn">Choose CSV file</button>
+      <div class="big">or drag a file anywhere in this box</div>
+      <div class="small" id="dropHint"></div>
+      <div class="filename" id="filename"></div>
+    </div>
+  </div>
+
+  <div class="step hidden" id="roleStep">
+    <div class="step-h"><span class="n">03</span> Assign column roles</div>
+    <div class="roles" id="rolesContainer"></div>
+    <div id="edaControls" class="hidden" style="margin-top:14px">
+      <div class="edaopts">
+        <div>
+          <label class="fld" for="edaPalette">Plot palette</label>
+          <select id="edaPalette"></select>
+        </div>
+        <div>
+          <label class="fld" for="edaEcdf">Additional plot</label>
+          <label class="chk"><input type="checkbox" id="edaEcdf"> Overlaid empirical CDF</label>
+          <div class="hint" style="margin-top:6px">Draws both groups as cumulative curves on one panel. Unequal sample sizes and bin width are not a factor, so it is often the fairer comparison when one group is much smaller.</div>
+        </div>
+      </div>
+    </div>
+    <div id="confControls" style="margin-top:14px">
+      <label class="fld" for="confSel">Confidence level for intervals</label>
+      <select id="confSel" style="max-width:200px">
+        <option value="0.90">90%</option>
+        <option value="0.95" selected>95%</option>
+        <option value="0.99">99%</option>
+      </select>
+    </div>
+    <div id="adjControls" class="hidden" style="margin-top:14px">
+      <label class="fld" for="bonfChk">Multiplicity adjustment</label>
+      <label class="chk"><input type="checkbox" id="bonfChk"> Bonferroni: adjusted <i>p</i>-values and simultaneous CIs</label>
+      <div class="hint" style="margin-top:6px">Unchecked (default): Holm-adjusted <i>p</i>-values with unadjusted per-comparison intervals. Checked: a single-step Bonferroni adjustment applied to both, so all intervals hold jointly at the confidence level above.</div>
+    </div>
+    <div id="altControls" class="hidden" style="margin-top:14px">
+      <label class="fld" for="altSel">Alternative hypothesis</label>
+      <select id="altSel" style="max-width:280px">
+        <option value="two.sided" selected>Two-sided (default)</option>
+        <option value="less">One-sided: less (left-tailed)</option>
+        <option value="greater">One-sided: greater (right-tailed)</option>
+      </select>
+      <div class="hint" style="margin-top:6px">The direction refers to the first-listed group or the test value (see the R console for R's exact statement). One-sided choices change the test's <i>p</i>-value and its own interval; effect-size intervals remain two-sided.</div>
+    </div>
+    <div class="rolewarn" id="roleWarn"></div>
+    <div class="run"><button class="run-btn" id="runBtn" disabled>Run analysis</button></div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="step hidden" id="outStep">
+    <div class="step-h"><span class="n">04</span> Output</div>
+    <div class="panels">
+      <div>
+        <div class="panel-h">R console (raw)</div>
+        <pre class="console" id="console"></pre>
+      </div>
+      <div>
+        <div class="panel-h"><span>APA-style result</span><button class="copy" id="copyBtn">Copy table</button></div>
+        <div class="apa" id="apa"></div>
+      </div>
+    </div>
+    <div class="edaplots hidden" id="testPlots"></div>
+    <div class="methodnote hidden" id="methodNote"></div>
+    <div class="hint">The two panels show the same analysis: R's native console output on the left, a clean APA table on the right (to read and paste). You write the interpretation.</div>
+  </div>
+
+  <div class="step hidden" id="edaOut">
+    <div class="step-h"><span class="n">04</span> Exploratory data analysis</div>
+    <div class="panel-h"><span>Summary statistics</span><button class="copy" id="edaCopyBtn">Copy table</button></div>
+    <div class="apa" id="edaStats"></div>
+    <div class="edaplots" id="edaPlots"></div>
+  </div>
+
+  <footer>Runs locally in your browser: no install, no server, no data leaves your machine. © 2026 Christian Bowers · PolyForm Noncommercial 1.0.0, free for noncommercial use; not for sale.</footer>
+</div>
+
+<script type="module">
+import { WebR } from 'https://webr.r-wasm.org/latest/webr.mjs';
+
+/* ============================ shared formatters ============================ */
+// APA 7 (6.36): keep the leading zero when a statistic CAN reach 1 in absolute
+// value; drop it only when it cannot. f2 = keeps it, nz/nzsig = drop it.
+// MINUS: set to '\u2212' for a typographic minus sign in the copied output.
+const MINUS = '-';
+const noNegZero = s => /^-0(\.0*)?$/.test(s) ? s.slice(1) : s;   // never print -0.00
+const f2 = (x,d=2)=>{ const v=Number(x); if(!Number.isFinite(v)) return String(x);
+  return noNegZero(v.toFixed(d)).replace(/^-/, MINUS); };
+const nz = (x,d=2)=>{ const v=Number(x); if(!Number.isFinite(v)) return String(x);
+  const s = noNegZero((v<0?'-':'')+Math.abs(v).toFixed(d));
+  return s.replace(/^(-?)0\./,'$1.').replace(/^-/, MINUS); };
+// df: integer when the df is an integer (one-sample, paired, chi-square),
+// two decimals when it is fractional (Welch, Brunner-Munzel).
+const fdf = (x)=>{ const v=Number(x); if(!Number.isFinite(v)) return String(x);
+  return Math.abs(v-Math.round(v)) < 1e-8 ? String(Math.round(v)) : v.toFixed(2); };
+const pct = (c)=> Math.round(Number(c)*100)+'%';
+// adaptive precision: 2 decimals normally, but keep ~2 significant figures for very small magnitudes
+const fsig = (x)=>{ const v=Number(x); if(!Number.isFinite(v)) return String(x);
+  if(v===0) return '0.00';
+  const a=Math.abs(v); if(a>=0.10) return v.toFixed(2);
+  const d=Math.min(8, 1-Math.floor(Math.log10(a))+1); return v.toFixed(d); };
+// adaptive proportion/effect formatter: strips leading zero, keeps ~2 sig figs when small
+const nzsig = (x)=>{ const v=Number(x); if(!Number.isFinite(v)) return String(x);
+  if(v===0) return '.00';
+  const a=Math.abs(v);
+  let s; if(a>=0.10) s=a.toFixed(2);
+  else { const d=Math.min(8, -Math.floor(Math.log10(a))+1); s=a.toFixed(d); }
+  return noNegZero((v<0?'-':'') + s).replace(/^0/,'').replace(/^-0/, MINUS).replace(/^-/, MINUS); };
+const pFmt = p => p < .001 ? '< .001' : '= ' + nz(p,3);
+
+/* ============================ APA table builder ============================ */
+// headers: [{t, it, num}]   rows: [[{t, num}, ...]]   note: {html, plain}
+function buildAPA({title, headers, rows, note, num=1}){
+  // A cell may carry markup for the screen and the Word copy; `p` (or a
+  // tag-stripped fallback) is what goes into the plain-text copy.
+  const txt = c => c.p != null ? String(c.p)
+    : String(c.t).replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ')
+                 .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+  const sHead = headers.map(h=>`<th class="${h.num?'num':''}">${h.it?`<span style="font-style:italic">${h.t}</span>`:h.t}</th>`).join('');
+  const sBody = rows.map(r=>`<tr>${r.map(c=>`<td class="${c.num?'num':''}">${c.t}</td>`).join('')}</tr>`).join('');
+  const screenHtml =
+    `<p class="tnum">Table ${num}</p><p class="ttitle">${title}</p>`+
+    `<table class="apa-tbl"><thead><tr>${sHead}</tr></thead><tbody>${sBody}</tbody></table>`+
+    `<p class="note">${note.html}</p>`;
+
+  const C="padding:3px 10px;font-family:'Times New Roman',serif;font-size:11pt;";
+  const TL="border-top:1.5px solid #000;", BH="border-bottom:1px solid #000;", BB="border-bottom:1.5px solid #000;";
+  const cHead = headers.map((h,i)=>`<td style="${C}${TL}${BH}text-align:${i===0?'left':'right'};${h.it?'font-style:italic;':''}">${h.t}</td>`).join('');
+  const cBody = rows.map((r,ri)=>{ const last=ri===rows.length-1;
+    return `<tr>${r.map((c,i)=>`<td style="${C}${last?BB:''}text-align:${i===0?'left':'right'};">${c.t}</td>`).join('')}</tr>`; }).join('');
+  const copyHtml =
+    `<p style="font-style:italic;font-family:'Times New Roman',serif;font-size:11pt;margin:0;">Table ${num}</p>`+
+    `<p style="font-style:italic;font-family:'Times New Roman',serif;font-size:11pt;margin:0 0 6pt;">${title}</p>`+
+    `<table style="border-collapse:collapse;"><tr>${cHead}</tr>${cBody}</table>`+
+    `<p style="font-family:'Times New Roman',serif;font-size:11pt;margin:6pt 0 0;">${note.html}</p>`;
+
+  const plain = `Table ${num}\n${title}\n\n`+
+    headers.map(txt).join('\t')+'\n'+
+    rows.map(r=>r.map(txt).join('\t')).join('\n')+'\n\n'+note.plain;
+
+  return {screenHtml, copyHtml, plain};
+}
+
+/* ==================== multiplicity wording (all-pairwise modules) ====================
+   Default (box unchecked): Holm-adjusted p-values, which control the familywise error
+   rate, alongside unadjusted per-comparison confidence intervals. The two answer
+   different questions and can disagree; the footnote below says so.
+   Box checked: one single-step Bonferroni adjustment applied to BOTH the p-values and
+   the intervals, so test and interval agree by construction. */
+function multOn(env){ return Number(env && env.bonf) === 1; }
+// Secondary tables are built as real APA tables (Table 2) so that they travel
+// with the Copy table button instead of living only on screen.
+const sub2 = t => `<div style="margin-top:22px">${t.screenHtml}</div>`;
+const paraCopy = html => `<p style="font-family:'Times New Roman',serif;font-size:11pt;margin:8pt 0 0;">${html}</p>`;
+function multBits(on, m, ci){
+  const pHead   = on ? 'Bonferroni' : 'Holm';
+  const capCI   = on ? `${ci} simultaneous CIs` : `${ci} unadjusted CIs`;
+  const methHtml = on
+    ? `${m} comparisons: Bonferroni-adjusted <i>p</i>-values; ${ci} single-step Bonferroni simultaneous CIs.`
+    : `${m} comparisons: Holm-adjusted <i>p</i>-values; ${ci} unadjusted per-comparison CIs.`;
+  const methPlain = on
+    ? `${m} comparisons: Bonferroni-adjusted p-values; ${ci} single-step Bonferroni simultaneous CIs.`
+    : `${m} comparisons: Holm-adjusted p-values; ${ci} unadjusted per-comparison CIs.`;
+  const footHtml = on
+    ? `<i>Note.</i> The <i>p</i>-values and the intervals carry the same single-step Bonferroni adjustment, so all ${m} intervals hold jointly at ${ci} and test and interval agree by construction.`
+    : `<i>Note.</i> Each interval controls only per-comparison coverage while the <i>p</i>-value controls the familywise error rate across all ${m} comparisons, so the two can disagree; that disagreement is the visible effect of the multiplicity adjustment.`;
+  const footPlain = on
+    ? `Note. The p-values and the intervals carry the same single-step Bonferroni adjustment, so all ${m} intervals hold jointly at ${ci} and test and interval agree by construction.`
+    : `Note. Each interval controls only per-comparison coverage while the p-value controls the familywise error rate across all ${m} comparisons, so the two can disagree; that disagreement is the visible effect of the multiplicity adjustment.`;
+  const footScreen = `<p class="note" style="margin-top:8px">${footHtml}</p>`;
+  const footCopy   = `<p style="font-family:'Times New Roman',serif;font-size:11pt;margin:6pt 0 0;">${footHtml}</p>`;
+  return { pHead, capCI, methHtml, methPlain, footHtml, footPlain, footScreen, footCopy };
+}
+
+/* ============================ shared R snippets ============================ */
+// Christian's exact noncentral-t limit finder, reused by g*s and g_z.
+const FIND_NCP = `
+find_ncp_limits <- function(ncp, df, alpha) {
+  suppressWarnings({
+    lower_fun <- function(ncp_low) { pt(ncp, df, ncp_low) - (1 - alpha/2) }
+    upper_fun <- function(ncp_up)  { pt(ncp, df, ncp_up)  - alpha/2 }
+    tryCatch({
+      if (abs(ncp) < 1e-6) {
+        t_crit <- qt(1 - alpha/2, df); lower_limit <- -t_crit; upper_limit <- t_crit
+      } else {
+        search_range <- max(15, abs(ncp) * 4)
+        lower_limit <- tryCatch({
+          tl <- lower_fun(-search_range); tu <- lower_fun(ncp - 0.01)
+          if (is.finite(tl) && is.finite(tu) && sign(tl) != sign(tu)) {
+            uniroot(lower_fun, c(-search_range, ncp - 0.01), tol = 1e-4, maxiter = 100)$root
+          } else { ncp - qt(1 - alpha/2, df) * sqrt(1 + ncp^2/(2*df)) }
+        }, error = function(e) { ncp - qt(1 - alpha/2, df) * sqrt(1 + ncp^2/(2*df)) })
+        upper_limit <- tryCatch({
+          tl <- upper_fun(ncp + 0.01); tu <- upper_fun(search_range)
+          if (is.finite(tl) && is.finite(tu) && sign(tl) != sign(tu)) {
+            uniroot(upper_fun, c(ncp + 0.01, search_range), tol = 1e-4, maxiter = 100)$root
+          } else { ncp + qt(1 - alpha/2, df) * sqrt(1 + ncp^2/(2*df)) }
+        }, error = function(e) { ncp + qt(1 - alpha/2, df) * sqrt(1 + ncp^2/(2*df)) })
+      }
+      return(list(Lower.Limit = lower_limit, Upper.Limit = upper_limit))
+    }, error = function(e) {
+      se_approx <- sqrt(1 + ncp^2/(2*df)); t_crit <- qt(1 - alpha/2, df)
+      return(list(Lower.Limit = ncp - t_crit * se_approx, Upper.Limit = ncp + t_crit * se_approx))
+    })
+  })
+}`;
+
+/* ============================ test registry ============================ */
+/* ============================ EDA helpers ============================ */
+let ggReady = false;
+const installed = new Set();
+function quantile7(s, p){ const n=s.length; if(!n) return NaN; const h=(n-1)*p, lo=Math.floor(h), hi=Math.ceil(h); return s[lo]+(h-lo)*(s[hi]-s[lo]); }
+function summ(vals){ const v=vals.slice().sort((a,b)=>a-b); const n=v.length; const mean=v.reduce((a,b)=>a+b,0)/n;
+  const sd = n>1 ? Math.sqrt(v.reduce((a,b)=>a+(b-mean)*(b-mean),0)/(n-1)) : NaN;
+  return {n, mean, sd, sem:sd/Math.sqrt(n), min:v[0], q1:quantile7(v,.25), mdn:quantile7(v,.5), q3:quantile7(v,.75), max:v[n-1]}; }
+function edaStatsBuild(vals, groups, vname, gname){
+  const rows=[];
+  if(groups){ const L=[...new Set(groups)].sort(); L.forEach(g=>rows.push([g, summ(vals.filter((_,i)=>groups[i]===g))])); }
+  else rows.push([vname, summ(vals)]);
+  const labHead = groups ? gname : 'Variable';
+  const statHead = ['n','M','SD','SEM','Min','Q1','Mdn','Q3','Max'];
+  const cells = s => [String(s.n), f2(s.mean), f2(s.sd), f2(s.sem), f2(s.min), f2(s.q1), f2(s.mdn), f2(s.q3), f2(s.max)];
+
+  const head = `<th>${labHead}</th>`+statHead
+    .map(h=>`<th class="num"><span style="font-style:italic">${h}</span></th>`).join('');
+  const body = rows.map(([lab,s])=>`<tr><td>${lab}</td>`+
+    cells(s).map(x=>`<td class="num">${x}</td>`).join('')+`</tr>`).join('');
+  const screenHtml = `<table class="apa-tbl"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+
+  const title = groups ? `Descriptive Statistics for ${vname} by ${gname}`
+                       : `Descriptive Statistics for ${vname}`;
+  const noteHtml  = `<i>Note.</i> <i>SEM</i> = standard error of the mean; <i>Q</i>1 and <i>Q</i>3 = first and third quartiles; <i>Mdn</i> = median. Quartiles use R's type-7 definition.`;
+  const notePlain = `Note. SEM = standard error of the mean; Q1 and Q3 = first and third quartiles; Mdn = median. Quartiles use R's type-7 definition.`;
+
+  const C="padding:3px 10px;font-family:'Times New Roman',serif;font-size:11pt;";
+  const TL="border-top:1.5px solid #000;", BH="border-bottom:1px solid #000;", BB="border-bottom:1.5px solid #000;";
+  const cHead = [labHead, ...statHead].map((h,i)=>
+    `<td style="${C}${TL}${BH}text-align:${i===0?'left':'right'};${i?'font-style:italic;':''}">${h}</td>`).join('');
+  const cBody = rows.map(([lab,s],ri)=>{ const last=ri===rows.length-1;
+    return `<tr>`+[lab,...cells(s)].map((c,i)=>
+      `<td style="${C}${last?BB:''}text-align:${i===0?'left':'right'};">${c}</td>`).join('')+`</tr>`; }).join('');
+  const copyHtml =
+    `<p style="font-style:italic;font-family:'Times New Roman',serif;font-size:11pt;margin:0;">Table 1</p>`+
+    `<p style="font-style:italic;font-family:'Times New Roman',serif;font-size:11pt;margin:0 0 6pt;">${title}</p>`+
+    `<table style="border-collapse:collapse;"><tr>${cHead}</tr>${cBody}</table>`+
+    `<p style="font-family:'Times New Roman',serif;font-size:11pt;margin:6pt 0 0;">${noteHtml}</p>`;
+
+  const plain = `Table 1\n${title}\n\n`+
+    [labHead,...statHead].join('\t')+'\n'+
+    rows.map(([lab,s])=>[lab,...cells(s)].join('\t')).join('\n')+'\n\n'+notePlain;
+
+  return {screenHtml, copyHtml, plain};
+}
+function edaPlotCode(active, cols, pal, showEcdf){
+  const has = k => active.some(r=>r.key===k);
+  const hasG=has('group'), hasS=has('second');
+  const q = s => String(s).replace(/'/g,'');
+  const vn=q(cols.variable), gn=hasG?q(cols.group):'', sn=hasS?q(cols.second):'';
+  const ACC=`'${pal.accent}'`;
+  const CATS='c('+pal.cats.map(c=>`'${c}'`).join(',')+')';
+  const TH="theme_minimal(base_size=13)";
+  const lines=["library(ggplot2)"];
+  lines.push(hasG ? "df<-data.frame(v=as.numeric(variable), g=factor(group))" : "df<-data.frame(v=as.numeric(variable))");
+  if(hasS) lines.push("df$s<-as.numeric(second)");
+  // Axis labels as percentages. signif() keeps a useful digit when the bars are small.
+  lines.push("pctlab<-function(x) ifelse(is.na(x),'',paste0(signif(100*x,3),'%'))");
+  // Facet strip labels carry each group's n: rescaling to proportion hides sample
+  // size, and the reader needs it to judge how much to trust the smaller panel.
+  if(hasG){
+    lines.push("nn<-table(df$g)");
+    lines.push("df$gl<-factor(df$g,levels=names(nn),labels=paste0(names(nn),' (n = ',format(as.integer(nn),big.mark=',',trim=TRUE),')'))");
+  }
+  // y = density*width is count/sum(count) computed inside stat_bin, so the
+  // proportion is per group. Do not use count/sum(count): that sums the layer.
+  lines.push(hasG
+    ? `print(ggplot(df,aes(x=v,fill=g))+geom_histogram(aes(y=after_stat(density*width)),bins=30,color='white')+scale_fill_manual(values=${CATS})+scale_y_continuous(labels=pctlab)+${TH}+labs(x='${vn}',y='Relative frequency',title='Histogram')+facet_wrap(~gl)+guides(fill='none'))`
+    : `print(ggplot(df,aes(x=v))+geom_histogram(aes(y=after_stat(density*width)),bins=30,fill=${ACC},color='white')+scale_y_continuous(labels=pctlab)+${TH}+labs(x='${vn}',y='Relative frequency',title='Histogram'))`);
+  if(showEcdf) lines.push(hasG
+    ? `print(ggplot(df,aes(x=v,color=gl))+stat_ecdf(linewidth=.9)+scale_color_manual(values=${CATS})+scale_y_continuous(labels=pctlab)+${TH}+labs(x='${vn}',y='Cumulative proportion',color='${gn}',title='Empirical CDF'))`
+    : `print(ggplot(df,aes(x=v))+stat_ecdf(linewidth=.9,color=${ACC})+scale_y_continuous(labels=pctlab)+${TH}+labs(x='${vn}',y='Cumulative proportion',title='Empirical CDF'))`);
+  lines.push(hasG
+    ? `print(ggplot(df,aes(x=g,y=v,fill=g))+geom_boxplot(alpha=.7)+scale_fill_manual(values=${CATS})+${TH}+labs(x='${gn}',y='${vn}',title='Boxplot by group')+guides(fill='none'))`
+    : `print(ggplot(df,aes(y=v))+geom_boxplot(fill=${ACC},alpha=.7)+${TH}+labs(y='${vn}',title='Boxplot')+theme(axis.text.x=element_blank(),axis.ticks.x=element_blank()))`);
+  lines.push(hasG
+    ? `print(ggplot(df,aes(sample=v,color=g))+stat_qq(alpha=.6)+stat_qq_line()+scale_color_manual(values=${CATS})+${TH}+labs(title='Normal Q-Q',x='Theoretical',y='Sample')+facet_wrap(~g)+guides(color='none'))`
+    : `print(ggplot(df,aes(sample=v))+stat_qq(alpha=.6)+stat_qq_line(color=${ACC})+${TH}+labs(title='Normal Q-Q',x='Theoretical',y='Sample'))`);
+  if(hasS) lines.push(hasG
+    ? `print(ggplot(df,aes(x=v,y=s,color=g))+geom_point(alpha=.6)+scale_color_manual(values=${CATS})+${TH}+labs(x='${vn}',y='${sn}',color='${gn}',title='Scatterplot'))`
+    : `print(ggplot(df,aes(x=v,y=s))+geom_point(alpha=.6,color=${ACC})+${TH}+labs(x='${vn}',y='${sn}',title='Scatterplot'))`);
+  const captions=['Histogram'].concat(showEcdf?['Empirical CDF']:[],['Boxplot','Normal Q-Q'],hasS?['Scatterplot']:[]);
+  return { code: lines.join("; "), captions };
+}
+
+const PALETTES = {
+  forest:  { name:'Forest (green) — default', accent:'#0f6b5c', cats:['#0f6b5c','#c98a2b','#3f6d9e','#8a4f7d','#6b8f3a','#b0563a'] },
+  ocean:   { name:'Ocean (blue)',             accent:'#1f6f8b', cats:['#1f6f8b','#3aa6a6','#6b8f3a','#e0a458','#9e4f6d','#4a5e8a'] },
+  sunset:  { name:'Sunset (warm)',            accent:'#c65d3b', cats:['#c65d3b','#e0a458','#9e4f6d','#5b8c85','#d4b483','#7d5a5a'] },
+  viridis: { name:'Viridis',                  accent:'#21918c', cats:['#440154','#3b528b','#21918c','#5ec962','#fde725','#414487'] },
+  okabe:   { name:'Okabe–Ito (colorblind-safe)', accent:'#009E73', cats:['#E69F00','#56B4E9','#009E73','#F0E442','#0072B2','#D55E00','#CC79A7','#000000'] },
+  gray:    { name:'Grayscale',                accent:'#555555', cats:['#222222','#666666','#999999','#bbbbbb','#444444','#888888'] }
+};
+
+let lastEda = null, lastEdaStats = null;
+async function drawEDA(env, cols, active){
+  if(!ggReady){ setStatus('Installing the plotting library (one-time download)…',{busy:true}); await webR.installPackages(['ggplot2']); ggReady=true; }
+  setStatus('Drawing plots in R…',{busy:true});
+  const pal = PALETTES[document.getElementById('edaPalette').value] || PALETTES.forest;
+  const {code, captions} = edaPlotCode(active, cols, pal, document.getElementById('edaEcdf').checked);
+  const shelter = await new webR.Shelter();
+  try{
+    const cap = await shelter.captureR(code, { env, captureGraphics:{ width:820, height:460 } });
+    const st = edaStatsBuild(env.variable, env.group||null, cols.variable, cols.group);
+    document.getElementById('edaStats').innerHTML = st.screenHtml;
+    lastEdaStats = { htmlTable: st.copyHtml, plain: st.plain };
+    const wrap=document.getElementById('edaPlots'); wrap.innerHTML='';
+    (cap.images||[]).forEach((img,i)=>{
+      wrap.appendChild(buildPlotCard(img, captions[i]||('Plot '+(i+1))));
+    });
+    document.getElementById('edaOut').classList.remove('hidden');
+  } finally { await shelter.purge(); }
+}
+
+function rlistToObj(j){ const o={}; (j.names||[]).forEach((nm,i)=>{ o[nm]=j.values[i].values; }); return o; }
+
+const TESTS = {
+
+  eda: {
+    label: "Exploratory data analysis (summary + plots)",
+    dropHint: "Any dataset: choose a numeric variable, and optionally a grouping column and/or a second numeric variable.",
+    runLabel: "Explore data",
+    roles: [
+      { key:'variable', kind:'numeric',   label:'Variable — numeric' },
+      { key:'group',    kind:'group_any', label:'Group (optional) — splits stats and plots by group', optional:true },
+      { key:'second',   kind:'numeric',   label:'Second variable (optional) — enables a scatterplot', optional:true }
+    ],
+    defaults: {},
+    async run({env, cols, active, used, dropped}){
+      document.getElementById('outStep').classList.add('hidden');
+      lastEda = {env, cols, active};
+      await drawEDA(env, cols, active);
+      setStatus(`Done. ${used} rows used${dropped?`, ${dropped} dropped for missing values`:''}.`);
+    }
+  },
+
+  ind_means: {
+    label: "Two-sample - Independent means — Welch's t test + Hedges' g*s",
+    dropHint: "Long/tidy data: a numeric outcome column and a 2-level grouping column.",
+    sided: true,
+    methodNote: "<b>Why these methods.</b> Welch's <i>t</i> is the default because the equal-variance assumption rarely holds and pretesting it does not help (Delacre, Lakens &amp; Leys, 2017). Hedges' <i>g*</i><sub>s</sub> pairs with it \u2014 the non-pooled SD with a small-sample correction \u2014 and is preferred over Cohen's <i>d</i> under unequal variances (Delacre et al., 2021).",
+    roles: [
+      { key:'resp', kind:'numeric', label:'Response — numeric outcome' },
+      { key:'grp',  kind:'group2',  label:'Group — must have exactly 2 levels' }
+    ],
+    defaults: { resp:'bwt', grp:'smoke' },
+    resultKeys: ['t','df','p','md','cil','ciu','g','gl','gu','m1','s1','n1','m2','s2','n2'],
+    rProgram: FIND_NCP + `
+g.star.ci <- function(x.bar.1, x.bar.2, s.1, s.2, n.1, n.2, alpha) {
+  df.star <- (n.1-1)*(n.2-1)*(s.1^2+s.2^2)^2/((n.2-1)*s.1^4 + (n.1-1)*s.2^4)
+  ncp.star <- (x.bar.1 - x.bar.2)/sqrt(s.1^2/n.1 + s.2^2/n.2)
+  x <- find_ncp_limits(ncp.star, df.star, alpha)
+  ncp.star.low <- x$Lower.Limit; ncp.star.up <- x$Upper.Limit
+  d.star <- (x.bar.1 - x.bar.2)/sqrt((s.1^2+s.2^2)/2)
+  m <- df.star/2
+  if (m >= 170) { J <- (1-3/(4*df.star-9)) } else { J <- gamma(m)/(gamma(m-0.5)*sqrt(m)) }
+  g.star <- d.star*J
+  scale <- sqrt(2*(n.2*s.1^2 + n.1*s.2^2)/(n.1*n.2*(s.1^2+s.2^2)))*J
+  data.frame(g.star, g.star.low = ncp.star.low*scale, g.star.up = ncp.star.up*scale)
+}
+d <- data.frame(resp = as.numeric(resp), grp = factor(grp))
+lv <- levels(d$grp)
+tt <- t.test(resp ~ grp, data = d, conf.level = conf, alternative = alt)
+g1 <- d$resp[d$grp == lv[1]]; g2 <- d$resp[d$grp == lv[2]]
+m1 <- mean(g1); s1 <- sd(g1); n1 <- length(g1)
+m2 <- mean(g2); s2 <- sd(g2); n2 <- length(g2)
+g <- g.star.ci(m1, m2, s1, s2, n1, n2, 1 - conf)
+print(tt)
+cat(sprintf("\\nGroups compared: %s minus %s\\n", lv[1], lv[2]))
+cat(sprintf("Hedges g*s = %.3f, %.0f%% CI [%.3f, %.3f]\\n", g$g.star, conf*100, g$g.star.low, g$g.star.up))
+c(t=unname(tt$statistic), df=unname(tt$parameter), p=tt$p.value,
+  md=m1-m2, cil=tt$conf.int[1], ciu=tt$conf.int[2],
+  g=g$g.star, gl=g$g.star.low, gu=g$g.star.up,
+  m1=m1, s1=s1, n1=n1, m2=m2, s2=s2, n2=n2)`,
+    render(R, ctx){
+      const [l1,l2] = ctx.levels.grp, grp = ctx.cols.grp, resp = ctx.cols.resp;
+      return buildAPA({
+        title:`Descriptive Statistics and Welch's t Test for ${resp} by ${grp}`,
+        headers:[{t:grp},{t:'n',it:true,num:true},{t:'M',it:true,num:true},{t:'SD',it:true,num:true}],
+        rows:[
+          [{t:l1},{t:R.n1,num:true},{t:f2(R.m1),num:true},{t:f2(R.s1),num:true}],
+          [{t:l2},{t:R.n2,num:true},{t:f2(R.m2),num:true},{t:f2(R.s2),num:true}]
+        ],
+        note:{
+          html:`<i>Note.</i> Welch's <i>t</i>(${fdf(R.df)}) = ${f2(R.t)}, <i>p</i> ${pFmt(R.p)}, ${sidedTxt(ctx.env.alt)}. Mean difference (${l1} &minus; ${l2}) = ${f2(R.md)}, ${pct(ctx.conf)} CI [${fci(R.cil)}, ${fci(R.ciu)}]. Hedges' <i>g*</i><sub>s</sub> = ${f2(R.g)}, ${pct(ctx.conf)} CI [${f2(R.gl)}, ${f2(R.gu)}].`,
+          plain:`Note. Welch's t(${fdf(R.df)}) = ${f2(R.t)}, p ${pFmt(R.p)}, ${sidedTxt(ctx.env.alt)}. Mean difference (${l1} - ${l2}) = ${f2(R.md)}, ${pct(ctx.conf)} CI [${fci(R.cil)}, ${fci(R.ciu)}]. Hedges' g*s = ${f2(R.g)}, ${pct(ctx.conf)} CI [${f2(R.gl)}, ${f2(R.gu)}].`
+        }
+      });
+    }
+  },
+
+  paired: {
+    label: "Paired / repeated measures — paired t test + Hedges' g_z",
+    dropHint: "Two numeric columns, one per condition (e.g. pre and post); each row is one subject or matched pair.",
+    sided: true,
+    methodNote: "<b>Why this effect size.</b> Hedges' <i>g</i><sub>z</sub> standardizes the mean difference by the SD of the differences (the within-subject standardizer) and applies a small-sample correction, so it is less biased than the uncorrected Cohen's <i>d</i><sub>z</sub>, especially at small <i>n</i> (Lakens, 2013).",
+    roles: [
+      { key:'pre',  kind:'numeric', label:'First condition (e.g. pre) — numeric' },
+      { key:'post', kind:'numeric', label:'Second condition (e.g. post) — numeric' }
+    ],
+    defaults: {},
+    resultKeys: ['t','df','p','md','cil','ciu','g','gl','gu','sdd','n','mpre','sdpre','mpost','sdpost'],
+    rProgram: FIND_NCP + `
+x <- as.numeric(pre); y <- as.numeric(post)
+dvec <- x - y
+n <- length(dvec); md <- mean(dvec); sdd <- sd(dvec)
+tt <- t.test(x, y, paired = TRUE, conf.level = conf, alternative = alt)
+t.obs <- unname(tt$statistic); df <- n - 1
+lim <- find_ncp_limits(t.obs, df, 1 - conf)
+dz <- md / sdd
+m <- df/2
+if (m >= 170) { J <- (1 - 3/(4*df - 1)) } else { J <- gamma(m)/(gamma(m-0.5)*sqrt(m)) }
+gz <- dz * J
+gz.low <- (lim$Lower.Limit / sqrt(n)) * J
+gz.up  <- (lim$Upper.Limit  / sqrt(n)) * J
+print(tt)
+cat(sprintf("\\nMean of differences = %.3f, SD of differences = %.3f, n pairs = %d\\n", md, sdd, n))
+cat(sprintf("Hedges g_z = %.3f, %.0f%% CI [%.3f, %.3f]\\n", gz, conf*100, gz.low, gz.up))
+c(t=t.obs, df=df, p=tt$p.value, md=md, cil=tt$conf.int[1], ciu=tt$conf.int[2],
+  g=gz, gl=gz.low, gu=gz.up, sdd=sdd, n=n,
+  mpre=mean(x), sdpre=sd(x), mpost=mean(y), sdpost=sd(y))`,
+    render(R, ctx){
+      const pre = ctx.cols.pre, post = ctx.cols.post;
+      return buildAPA({
+        title:`Descriptive Statistics and Paired-Samples t Test for ${pre} and ${post}`,
+        headers:[{t:'Condition'},{t:'n',it:true,num:true},{t:'M',it:true,num:true},{t:'SD',it:true,num:true}],
+        rows:[
+          [{t:pre},{t:R.n,num:true},{t:f2(R.mpre),num:true},{t:f2(R.sdpre),num:true}],
+          [{t:post},{t:R.n,num:true},{t:f2(R.mpost),num:true},{t:f2(R.sdpost),num:true}]
+        ],
+        note:{
+          html:`<i>Note.</i> Paired <i>t</i>(${fdf(R.df)}) = ${f2(R.t)}, <i>p</i> ${pFmt(R.p)}, ${sidedTxt(ctx.env.alt)}. Mean difference (${pre} &minus; ${post}) = ${f2(R.md)}, ${pct(ctx.conf)} CI [${fci(R.cil)}, ${fci(R.ciu)}]. Hedges' <i>g</i><sub>z</sub> = ${f2(R.g)}, ${pct(ctx.conf)} CI [${f2(R.gl)}, ${f2(R.gu)}].`,
+          plain:`Note. Paired t(${fdf(R.df)}) = ${f2(R.t)}, p ${pFmt(R.p)}, ${sidedTxt(ctx.env.alt)}. Mean difference (${pre} - ${post}) = ${f2(R.md)}, ${pct(ctx.conf)} CI [${fci(R.cil)}, ${fci(R.ciu)}]. Hedges' g_z = ${f2(R.g)}, ${pct(ctx.conf)} CI [${f2(R.gl)}, ${f2(R.gu)}].`
+        }
+      });
+    }
+  },
+
+  onesample: {
+    label: "One-sample t test (vs a hypothesized value) + Hedges' g",
+    dropHint: "Any dataset: choose one numeric column and type the hypothesized mean to test against.",
+    sided: true,
+    methodNote: "<b>Why this effect size.</b> Hedges' <i>g</i> applies a small-sample correction to Cohen's <i>d</i>, removing the slight upward bias of <i>d</i>, especially at small <i>n</i> (Lakens, 2013).",
+    roles: [
+      { key:'resp', kind:'numeric', label:'Variable — numeric' }
+    ],
+    params: [
+      { key:'mu0', label:'Hypothesized mean (\u03BC\u2080)', default:0 }
+    ],
+    defaults: {},
+    resultKeys: ['t','df','p','m','s','n','mu0','cil','ciu','g','gl','gu'],
+    rProgram: FIND_NCP + `
+x <- as.numeric(resp)
+n <- length(x); m <- mean(x); s <- sd(x)
+tt <- t.test(x, mu = mu0, conf.level = conf, alternative = alt)
+t.obs <- unname(tt$statistic); df <- n - 1
+lim <- find_ncp_limits(t.obs, df, 1 - conf)
+dd <- (m - mu0)/s
+mm <- df/2
+if (mm >= 170) { J <- (1 - 3/(4*df - 1)) } else { J <- gamma(mm)/(gamma(mm-0.5)*sqrt(mm)) }
+g <- dd * J
+g.low <- (lim$Lower.Limit / sqrt(n)) * J
+g.up  <- (lim$Upper.Limit  / sqrt(n)) * J
+print(tt)
+cat(sprintf("\\nHedges g = %.3f, %.0f%% CI [%.3f, %.3f]\\n", g, conf*100, g.low, g.up))
+c(t=t.obs, df=df, p=tt$p.value, m=m, s=s, n=n, mu0=mu0,
+  cil=tt$conf.int[1], ciu=tt$conf.int[2], g=g, gl=g.low, gu=g.up)`,
+    render(R, ctx){
+      const resp = ctx.cols.resp;
+      const mu = Number.isInteger(R.mu0) ? R.mu0 : f2(R.mu0);
+      return buildAPA({
+        title:`Descriptive Statistics and One-Sample t Test for ${resp} (test value = ${mu})`,
+        headers:[{t:'Variable'},{t:'n',it:true,num:true},{t:'M',it:true,num:true},{t:'SD',it:true,num:true}],
+        rows:[
+          [{t:resp},{t:R.n,num:true},{t:f2(R.m),num:true},{t:f2(R.s),num:true}]
+        ],
+        note:{
+          html:`<i>Note.</i> One-sample <i>t</i>(${fdf(R.df)}) = ${f2(R.t)}, <i>p</i> ${pFmt(R.p)}, ${sidedTxt(ctx.env.alt)}, test value = ${mu}. ${pct(ctx.conf)} CI for the mean [${fci(R.cil)}, ${fci(R.ciu)}]. Hedges' <i>g</i> = ${f2(R.g)}, ${pct(ctx.conf)} CI [${f2(R.gl)}, ${f2(R.gu)}].`,
+          plain:`Note. One-sample t(${fdf(R.df)}) = ${f2(R.t)}, p ${pFmt(R.p)}, ${sidedTxt(ctx.env.alt)}, test value = ${mu}. ${pct(ctx.conf)} CI for the mean [${fci(R.cil)}, ${fci(R.ciu)}]. Hedges' g = ${f2(R.g)}, ${pct(ctx.conf)} CI [${f2(R.gl)}, ${f2(R.gu)}].`
+        }
+      });
+    }
+  },
+
+  chisq: {
+    label: "Chi-square test of independence/homogeneity (+ Cramér's V)",
+    dropHint: "Two categorical columns. If your data is pre-aggregated (one row per cell with a frequency), also pick the counts column.",
+    methodNote: "<b>Why these statistics.</b> Cram\u00E9r's <i>V</i> uses the bias-corrected (Bergsma) adjustment. It is shown with a 90% CI: because the \u03C7\u00B2 test is one-sided, a 90% two-sided interval corresponds to the 95% test (Steiger, 2004; Lakens, 2013). Standardized residuals with |z| greater than about 2 flag the cells driving the association.",
+    roles: [
+      { key:'row',    kind:'categorical', label:'Row variable — categorical' },
+      { key:'col',    kind:'categorical', label:'Column variable — categorical' },
+      { key:'counts', kind:'numeric',     label:'Counts (optional) — frequency per cell, for pre-aggregated data', optional:true }
+    ],
+    defaults: { row:'Gender', col:'Age', counts:'Count' },
+    rProgram: `
+library(effectsize)
+rf <- factor(row); cf <- factor(col)
+if (exists("counts")) {
+  dd <- data.frame(rf = rf, cf = cf, w = as.numeric(counts))
+  tab <- xtabs(w ~ rf + cf, data = dd)
+} else { tab <- table(rf, cf) }
+ct <- chisq.test(tab, correct = FALSE)
+cv <- cramers_v(tab, adjust = TRUE, ci = 2*conf - 1, alternative = "two.sided")
+std <- ct$stdres
+print(ct)
+cat("\\nObserved counts:\\n"); print(tab)
+cat("\\nExpected counts (each should be >= 5):\\n"); print(round(ct$expected, 2))
+cat("\\nRow percentages (% of row total):\\n"); print(round(prop.table(tab, 1) * 100, 1))
+list(chi2 = unname(ct$statistic), df = unname(ct$parameter), p = ct$p.value,
+     N = sum(tab), V = cv[[1]], cil = cv$CI_low, ciu = cv$CI_high,
+     minexp = min(ct$expected), nr = nrow(tab), nc = ncol(tab),
+     rowlab = rownames(tab), collab = colnames(tab),
+     obs = as.vector(t(tab)), std = as.vector(t(std)))`,
+    async run({env, cols, active, used, dropped}){
+      document.getElementById('edaOut').classList.add('hidden');
+      if(!installed.has('effectsize')){ setStatus('Installing effectsize (one-time download)…',{busy:true}); await webR.installPackages(['effectsize']); installed.add('effectsize'); }
+      setStatus('Running in R…',{busy:true});
+      const shelter = await new webR.Shelter();
+      try{
+        const cap = await shelter.captureR(this.rProgram, { env });
+        const consoleText = cap.output.filter(o=>o.type==='stdout'||o.type==='stderr').map(o=>o.data).join('\n');
+        const R = rlistToObj(await cap.result.toJs());
+        const nr=R.nr[0], nc=R.nc[0], obs=R.obs, std=R.std, rowlab=R.rowlab, collab=R.collab;
+        const rowName=cols.row, colName=cols.col;
+        const headers=[{t:rowName}].concat(collab.map(c=>({t:String(c), num:true})));
+        const rows=[];
+        for(let i=0;i<nr;i++){ rows.push([{t:String(rowlab[i])}].concat(collab.map((_,j)=>({t:obs[i*nc+j], num:true})))); }
+        const sparse = R.minexp[0] < 5;
+        const ciPct = Math.round((2*env.conf - 1)*100);
+        const warnH = sparse ? ` Some expected counts &lt; 5; interpret with caution (Fisher's exact is preferred for sparse tables).` : '';
+        const warnP = sparse ? ` Some expected counts < 5; interpret with caution (Fisher's exact is preferred for sparse tables).` : '';
+        const note = {
+          html:`<i>Note.</i> \u03C7\u00B2(${R.df[0]}, <i>N</i> = ${R.N[0]}) = ${f2(R.chi2[0])}, <i>p</i> ${pFmt(R.p[0])}. Cram\u00E9r's <i>V</i> (bias-corrected) = ${nz(R.V[0])}, ${ciPct}% CI [${nz(R.cil[0])}, ${nz(R.ciu[0])}].${warnH}`,
+          plain:`Note. chi-square(${R.df[0]}, N = ${R.N[0]}) = ${f2(R.chi2[0])}, p ${pFmt(R.p[0])}. Cramer's V (bias-corrected) = ${nz(R.V[0])}, ${ciPct}% CI [${nz(R.cil[0])}, ${nz(R.ciu[0])}].${warnP}`
+        };
+        const main = buildAPA({ title:`Contingency Table and Chi-Square Test of ${rowName} by ${colName}`, headers, rows, note });
+        const residRows = [];
+        for(let i=0;i<nr;i++){
+          residRows.push([{t:String(rowlab[i])}].concat(collab.map((_,j)=>({t:f2(std[i*nc+j]), num:true}))));
+        }
+        const t2 = buildAPA({
+          num:2,
+          title:`Standardized Residuals for ${rowName} by ${colName}`,
+          headers:[{t:rowName}].concat(collab.map(c=>({t:String(c), num:true}))),
+          rows:residRows,
+          note:{
+            html:`<i>Note.</i> Residuals with |<i>z</i>| greater than about 2 flag the cells driving the association.`,
+            plain:`Note. Residuals with |z| greater than about 2 flag the cells driving the association.`
+          }
+        });
+        document.getElementById('console').textContent = consoleText;
+        document.getElementById('apa').innerHTML = main.screenHtml + sub2(t2);
+        lastResult = {
+          plain: `${main.plain}\n\n${t2.plain}`,
+          htmlTable: main.copyHtml + '<br>' + t2.copyHtml
+        };
+        document.getElementById('outStep').classList.remove('hidden');
+        const confPct = Math.round(env.conf*100);
+        const methodNote = `<b>Cram\u00E9r's <i>V</i> and its interval.</b> Cram\u00E9r's <i>V</i> uses the bias-corrected (Bergsma) adjustment. You selected a ${confPct}% confidence level, but it is shown as a ${ciPct}% CI: because the \u03C7\u00B2 test is one-sided, a ${ciPct}% two-sided interval corresponds to the ${confPct}% test (Steiger, 2004; Lakens, 2013). Standardized residuals with |z| greater than about 2 flag the cells driving the association.`;
+        const mn=document.getElementById('methodNote'); mn.innerHTML=methodNote; mn.classList.remove('hidden');
+        setStatus(`Done. ${used} rows used${dropped?`, ${dropped} dropped for missing values`:''}.`);
+      } finally { await shelter.purge(); }
+    }
+  },
+
+  gof: {
+    label: "Chi-square goodness-of-fit (+ Cohen's w)",
+    dropHint: "One categorical column. If pre-aggregated (one row per category with a frequency), also pick the counts column.",
+    methodNote: "<b>Why this effect size.</b> Cohen's <i>w</i> summarizes how far the observed counts depart from the expected. Because the \u03C7\u00B2 test is one-sided, its interval is shown at the scaled confidence level (Steiger, 2004; Lakens, 2013).",
+    roles: [
+      { key:'variable', kind:'categorical', label:'Variable — categorical' },
+      { key:'counts',   kind:'numeric',     label:'Counts (optional) — frequency per category, for pre-aggregated data', optional:true }
+    ],
+    params: [
+      { key:'propstr', type:'text', label:'Expected proportions (optional) — comma-separated, in category order shown below; blank = equal', default:'' }
+    ],
+    levelsPreview: 'variable',
+    defaults: { variable:'Age', counts:'Count' },
+    rProgram: `
+library(effectsize)
+v <- factor(variable)
+if (exists("counts")) { dd <- data.frame(v = v, w = as.numeric(counts)); tab <- xtabs(w ~ v, data = dd) } else { tab <- table(v) }
+k <- length(tab)
+ps <- suppressWarnings(as.numeric(trimws(strsplit(propstr, ",")[[1]])))
+ps <- ps[is.finite(ps)]
+if (length(ps) == k && all(ps > 0)) { p <- ps/sum(ps) } else { p <- rep(1/k, k) }
+ct <- chisq.test(tab, p = p)
+cw <- cohens_w(tab, p = p, ci = 2*conf - 1, alternative = "two.sided")
+print(ct)
+cat("\\nObserved counts:\\n"); print(tab)
+cat("\\nExpected counts (each should be >= 5):\\n"); print(round(ct$expected, 2))
+cat(sprintf("\\nExpected proportions used: %s\\n", paste(round(p, 4), collapse = ", ")))
+list(chi2 = unname(ct$statistic), df = unname(ct$parameter), p = ct$p.value, N = sum(tab),
+     w = cw[[1]], cil = cw$CI_low, ciu = cw$CI_high, minexp = min(ct$expected),
+     k = k, lab = names(tab), obs = as.vector(tab), exp = as.vector(ct$expected))`,
+    async run({env, cols, active, used, dropped}){
+      document.getElementById('edaOut').classList.add('hidden');
+      if(!installed.has('effectsize')){ setStatus('Installing effectsize (one-time download)…',{busy:true}); await webR.installPackages(['effectsize']); installed.add('effectsize'); }
+      setStatus('Running in R…',{busy:true});
+      const shelter = await new webR.Shelter();
+      try{
+        const cap = await shelter.captureR(this.rProgram, { env });
+        const consoleText = cap.output.filter(o=>o.type==='stdout'||o.type==='stderr').map(o=>o.data).join('\n');
+        const R = rlistToObj(await cap.result.toJs());
+        const k=R.k[0], lab=R.lab, obs=R.obs, exp=R.exp, varName=cols.variable;
+        const headers=[{t:varName},{t:'Observed',num:true},{t:'Expected',num:true}];
+        const rows=[];
+        for(let i=0;i<k;i++){ rows.push([{t:String(lab[i])},{t:obs[i],num:true},{t:f2(exp[i]),num:true}]); }
+        const sparse = R.minexp[0] < 5;
+        const ciPct = Math.round((2*env.conf - 1)*100);
+        const warnH = sparse ? ` Some expected counts &lt; 5; interpret with caution.` : '';
+        const warnP = sparse ? ` Some expected counts < 5; interpret with caution.` : '';
+        const note = {
+          html:`<i>Note.</i> \u03C7\u00B2(${R.df[0]}, <i>N</i> = ${R.N[0]}) = ${f2(R.chi2[0])}, <i>p</i> ${pFmt(R.p[0])}. Cohen's <i>w</i> = ${f2(R.w[0])}, ${ciPct}% CI [${f2(R.cil[0])}, ${f2(R.ciu[0])}].${warnH}`,
+          plain:`Note. chi-square(${R.df[0]}, N = ${R.N[0]}) = ${f2(R.chi2[0])}, p ${pFmt(R.p[0])}. Cohen's w = ${f2(R.w[0])}, ${ciPct}% CI [${f2(R.cil[0])}, ${f2(R.ciu[0])}].${warnP}`
+        };
+        const out = buildAPA({ title:`Goodness-of-Fit Test for ${varName}`, headers, rows, note });
+        document.getElementById('console').textContent = consoleText;
+        document.getElementById('apa').innerHTML = out.screenHtml;
+        lastResult = { plain: out.plain, htmlTable: out.copyHtml };
+        document.getElementById('outStep').classList.remove('hidden');
+        const confPct = Math.round(env.conf*100);
+        const methodNote = `<b>Cohen's <i>w</i> and its interval.</b> Cohen's <i>w</i> summarizes how far the observed counts depart from the expected. You selected a ${confPct}% confidence level, but the effect-size interval is shown as a ${ciPct}% CI: because the \u03C7\u00B2 test is one-sided, a ${ciPct}% two-sided interval corresponds to the ${confPct}% test (Steiger, 2004; Lakens, 2013).`;
+        const mn=document.getElementById('methodNote'); mn.innerHTML=methodNote; mn.classList.remove('hidden');
+        setStatus(`Done. ${used} rows used${dropped?`, ${dropped} dropped for missing values`:''}.`);
+      } finally { await shelter.purge(); }
+    }
+  },
+
+  oneprop: {
+    label: "One-sample proportion (Wilson CI + score test)",
+    sided: true,
+    dropHint: "A categorical column with exactly 2 levels. If pre-aggregated, also pick the counts column.",
+    methodNote: "<b>Effect size and interval.</b> The Wilson score interval is used for the proportion (rather than the textbook Wald interval) because it keeps coverage near the nominal level even for small samples or proportions near 0 or 1 (Brown, Cai &amp; DasGupta, 2001). Cohen's <i>h</i><sub>2</sub> is the one-proportion arcsine index, 2\u00B7arcsin\u221A<i>p&#770;</i> \u2212 2\u00B7arcsin\u221A<i>p</i>\u2080, reported at the full confidence level. <b>Sample-size check.</b> The console reports <i>np</i>\u2080 and <i>n</i>(1 \u2212 <i>p</i>\u2080) against the conventional threshold of 10, evaluated at the hypothesized value because the null sampling distribution is built entirely from <i>p</i>\u2080. This is reported, not enforced: the test is not switched when the check fails, since the actual Type I error rate oscillates with <i>n</i> and <i>p</i>\u2080 rather than degrading in one direction, and any substitute test would break the exact correspondence between the score test and the Wilson interval. When the check fails the console also reports the <i>exact</i> Type I error rate at that <i>n</i> and <i>p</i>\u2080 for the score, mid-p, and exact binomial tests, obtained by enumerating the binomial null rather than by simulation, so the size of the problem is visible rather than merely flagged.",
+    roles: [
+      { key:'outcome', kind:'group2', label:'Outcome — categorical, exactly 2 levels' },
+      { key:'counts',  kind:'numeric', label:'Counts (optional) — frequency per category, for pre-aggregated data', optional:true }
+    ],
+    params: [
+      { key:'success', type:'level', fromRole:'outcome', default:'last', label:'Success category — the level counted as a success' },
+      { key:'p0', type:'number', default:0.5, label:'Hypothesized proportion (p\u2080)' }
+    ],
+    defaults: { outcome:'Gender', counts:'Count' },
+    resultKeys: ['x','n','phat','z','p','cil','ciu','p0','h2','h2l','h2u'],
+    rProgram: `
+o <- factor(outcome)
+if (exists("counts")) {
+  w <- as.numeric(counts); n <- sum(w); x <- sum(w[as.character(o) == success])
+} else { n <- length(o); x <- sum(as.character(o) == success) }
+cat(sprintf("Success category: %s\\n\\n", success))
+e1 <- n * p0; e2 <- n * (1 - p0)
+ok <- (e1 >= 10) && (e2 >= 10)
+cat("Normal-approximation check (evaluated at p0, not p-hat)\\n")
+cat(sprintf("  n * p0       = %g * %g = %.1f   %s\\n", n, p0, e1,
+            if (e1 >= 10) ">= 10   OK" else "<  10   NOT MET"))
+cat(sprintf("  n * (1 - p0) = %g * %g = %.1f   %s\\n", n, 1 - p0, e2,
+            if (e2 >= 10) ">= 10   OK" else "<  10   NOT MET"))
+if (ok) {
+  cat("  Both conditions met.\\n\\n")
+  cat("Test used: score z-test (uncorrected). The Wilson interval below inverts this\\n")
+  cat("  same test, so the interval and the p-value always agree.\\n\\n")
+} else {
+  cat("  *** WARNING: sample-size condition NOT met. ***\\n\\n")
+  cat("Test used: score z-test (uncorrected). The normal approximation is unreliable\\n")
+  cat("  at this n and p0. The true Type I error rate oscillates and can run well above\\n")
+  cat("  or below the stated level, so read the p-value and the Wilson interval as\\n")
+  cat("  approximate.\\n\\n")
+  if (n <= 100000) {
+    xx <- 0:n; d0 <- dbinom(xx, n, p0); F0 <- pbinom(xx, n, p0)
+    a <- (1 - conf) * (1 + 1e-9)
+    zz <- (xx/n - p0) / sqrt(p0 * (1 - p0) / n)
+    lo <- F0 - 0.5 * d0; hi <- 1 - F0 + 0.5 * d0
+    oo <- order(d0); cs <- cumsum(d0[oo])
+    if (alt == "two.sided") {
+      pz <- 2 * pnorm(-abs(zz))
+      pm <- pmin(1, 2 * pmin(lo, hi))
+      pe <- cs[findInterval(d0 * (1 + 1e-7), d0[oo])]
+    } else if (alt == "less") {
+      pz <- pnorm(zz); pm <- lo; pe <- F0
+    } else {
+      pz <- pnorm(zz, lower.tail = FALSE); pm <- hi
+      pe <- pbinom(xx - 1, n, p0, lower.tail = FALSE)
+    }
+    s.z <- sum(d0[pz <= a]); s.m <- sum(d0[pm <= a]); s.e <- sum(d0[pe <= a])
+    cat(sprintf("How bad is it here? Exact Type I error rate at n = %g, p0 = %g,\\n", n, p0))
+    cat(sprintf("  against a nominal %.3f (computed by enumeration, not simulation):\\n", 1 - conf))
+    cat(sprintf("    score z-test (used here) : %.4f\\n", s.z))
+    cat(sprintf("    mid-p binomial           : %.4f\\n", s.m))
+    cat(sprintf("    exact binomial           : %.4f\\n", s.e))
+    cat(sprintf("  The Wilson interval inverts the score test, so its coverage when p = p0\\n"))
+    cat(sprintf("    is exactly 1 - %.4f = %.4f, against a nominal %.4f.\\n\\n", s.z, 1 - s.z, conf))
+  }
+}
+a.lv <- (1 - conf) * (1 + 1e-9)
+z.o <- (x/n - p0) / sqrt(p0 * (1 - p0) / n)
+d.x <- dbinom(x, n, p0); F.x <- pbinom(x, n, p0)
+if (alt == "two.sided") {
+  p.sc <- 2 * pnorm(-abs(z.o))
+  p.mp <- min(1, 2 * min(F.x - 0.5 * d.x, 1 - F.x + 0.5 * d.x))
+  dall <- dbinom(0:n, n, p0); p.ex <- sum(dall[dall <= d.x * (1 + 1e-7)])
+} else if (alt == "less") {
+  p.sc <- pnorm(z.o); p.mp <- F.x - 0.5 * d.x; p.ex <- F.x
+} else {
+  p.sc <- pnorm(z.o, lower.tail = FALSE); p.mp <- 1 - F.x + 0.5 * d.x
+  p.ex <- pbinom(x - 1, n, p0, lower.tail = FALSE)
+}
+fp <- function(p) sub("^0[.]", ".", sprintf("%.4f", p))
+dc <- function(p) if (p <= a.lv) "reject H0" else "fail to reject"
+r.sc <- p.sc <= a.lv; r.mp <- p.mp <= a.lv; r.ex <- p.ex <= a.lv
+cat(sprintf("Sensitivity check at alpha = %.3f (same data, different methods)\\n", 1 - conf))
+cat(sprintf("    score z-test (primary) : p = %s   %s\\n", fp(p.sc), dc(p.sc)))
+cat(sprintf("    mid-p binomial         : p = %s   %s\\n", fp(p.mp), dc(p.mp)))
+cat(sprintf("    exact binomial         : p = %s   %s\\n", fp(p.ex), dc(p.ex)))
+if (r.sc == r.mp && r.sc == r.ex) {
+  cat("  All three methods agree. The conclusion does not depend on the normal\\n")
+  cat("    approximation. Report the score result.\\n\\n")
+} else {
+  cat(sprintf("  *** METHODS DISAGREE at alpha = %.3f. Report the score z-test as the\\n", 1 - conf))
+  cat("      primary result, and state in your write-up that the exact and/or mid-p\\n")
+  cat("      test reaches the opposite decision. This is not an error: it means the\\n")
+  cat("      p-value is sitting on the threshold. Treat the finding as borderline,\\n")
+  cat("      not established. Do not substitute whichever p-value you prefer. ***\\n\\n")
+}
+ptst <- prop.test(x, n, p = p0, correct = FALSE, conf.level = conf, alternative = alt)
+phat <- x / n
+zstat <- sign(phat - p0) * sqrt(unname(ptst$statistic))
+h2 <- 2*asin(sqrt(phat)) - 2*asin(sqrt(p0))
+z.c <- qnorm(1 - (1-conf)/2); se.h2 <- sqrt(1/n)
+h2.low <- h2 - z.c*se.h2; h2.up <- h2 + z.c*se.h2
+print(ptst)
+cat(sprintf("Cohen's h2 (arcsine vs p0) = %.3f, %.0f%% CI [%.3f, %.3f]\\n", h2, conf*100, h2.low, h2.up))
+c(x=x, n=n, phat=phat, z=zstat, p=ptst$p.value, cil=ptst$conf.int[1], ciu=ptst$conf.int[2], p0=p0,
+  h2=h2, h2l=h2.low, h2u=h2.up)`,
+    render(R, ctx){
+      const outcome = ctx.cols.outcome, success = ctx.env.success;
+      return buildAPA({
+        title:`One-Sample Proportion Test for ${outcome} (success = ${success})`,
+        headers:[{t:'Category'},{t:'x',it:true,num:true},{t:'n',it:true,num:true},{t:'p\u0302',num:true}],
+        rows:[[{t:success},{t:R.x,num:true},{t:R.n,num:true},{t:nzsig(R.phat)}]],
+        note:{
+          html:`<i>Note.</i> <i>z</i> = ${f2(R.z)}, <i>p</i> ${pFmt(R.p)}, ${sidedTxt(ctx.env.alt)}, test value = ${nzsig(R.p0)}. Sample proportion <i>p&#770;</i> = ${nzsig(R.phat)}, ${pct(ctx.conf)} Wilson CI [${nzsig(R.cil)}, ${nzsig(R.ciu)}]. Cohen's <i>h</i><sub>2</sub> = ${f2(R.h2)}, ${pct(ctx.conf)} CI [${f2(R.h2l)}, ${f2(R.h2u)}].`,
+          plain:`Note. z = ${f2(R.z)}, p ${pFmt(R.p)}, ${sidedTxt(ctx.env.alt)}, test value = ${nzsig(R.p0)}. Sample proportion p-hat = ${nzsig(R.phat)}, ${pct(ctx.conf)} Wilson CI [${nzsig(R.cil)}, ${nzsig(R.ciu)}]. Cohen's h2 = ${f2(R.h2)}, ${pct(ctx.conf)} CI [${f2(R.h2l)}, ${f2(R.h2u)}].`
+        }
+      });
+    }
+  },
+
+  twoprop: {
+    label: "Two-sample - Independent proportions (Newcombe CI + Cohen's h, RR, OR)",
+    dropHint: "A 2-level outcome column and a 2-level grouping column. If pre-aggregated, also pick the counts column.",
+    methodNote: "<b>Effect sizes and intervals.</b> The difference in proportions uses the Newcombe hybrid-score interval (Method 10), which keeps good coverage at any <i>n</i>, unlike the Wald interval (Newcombe, 1998). Cohen's <i>h</i> is the arcsine difference 2\u00B7arcsin\u221A<i>p&#770;</i>\u2081 \u2212 2\u00B7arcsin\u221A<i>p&#770;</i>\u2082. The risk ratio and odds ratio use Wald log intervals (the standard log-transform method, e.g. <i>epitools</i>' <code>method='wald'</code>). If any 2\u00D72 cell count is zero, a Haldane\u2013Anscombe correction (+0.5 to each cell) is applied to RR and OR so they stay defined (Haldane, 1956; Anscombe, 1956). All proportion effect sizes stay at the full confidence level.",
+    roles: [
+      { key:'outcome', kind:'group2', label:'Outcome — categorical, exactly 2 levels' },
+      { key:'group',   kind:'group2', label:'Group — categorical, exactly 2 levels' },
+      { key:'counts',  kind:'numeric', label:'Counts (optional) — frequency per cell, for pre-aggregated data', optional:true }
+    ],
+    params: [
+      { key:'success', type:'level', fromRole:'outcome', default:'last', label:'Success category — the outcome level counted as a success' }
+    ],
+    defaults: {},
+    sided: true,
+    resultKeys: ['x1','n1','p1','x2','n2','p2','z','p','diff','dlo','dup','h','hlo','hup','RR','rrlo','rrup','OR','orlo','orup','hac'],
+    rProgram: `
+o <- factor(outcome); g <- factor(group)
+gl <- levels(g); su <- success
+if (exists("counts")) {
+  w <- as.numeric(counts)
+  n1 <- sum(w[as.character(g)==gl[1]]); x1 <- sum(w[as.character(g)==gl[1] & as.character(o)==su])
+  n2 <- sum(w[as.character(g)==gl[2]]); x2 <- sum(w[as.character(g)==gl[2] & as.character(o)==su])
+} else {
+  n1 <- sum(as.character(g)==gl[1]); x1 <- sum(as.character(g)==gl[1] & as.character(o)==su)
+  n2 <- sum(as.character(g)==gl[2]); x2 <- sum(as.character(g)==gl[2] & as.character(o)==su)
+}
+p1 <- x1/n1; p2 <- x2/n2
+zc <- qnorm(1 - (1-conf)/2)
+ptst <- prop.test(c(x1, x2), c(n1, n2), correct = FALSE, alternative = alt)
+zstat <- sign(p1 - p2) * sqrt(unname(ptst$statistic))
+wilson <- function(x, n, zz = zc){ ph <- x/n; cen <- (ph + zz^2/(2*n))/(1 + zz^2/n)
+  hw <- (zz/(1 + zz^2/n))*sqrt(ph*(1-ph)/n + zz^2/(4*n^2)); c(cen - hw, cen + hw) }
+zd <- if (alt == "two.sided") zc else qnorm(conf)
+w1 <- wilson(x1, n1, zd); w2 <- wilson(x2, n2, zd)
+diff <- p1 - p2
+dlo <- if (alt == "less")    -1 else diff - sqrt((p1 - w1[1])^2 + (w2[2] - p2)^2)
+dup <- if (alt == "greater")  1 else diff + sqrt((w1[2] - p1)^2 + (p2 - w2[1])^2)
+h <- 2*asin(sqrt(p1)) - 2*asin(sqrt(p2)); seh <- sqrt(1/n1 + 1/n2)
+hlo <- h - zc*seh; hup <- h + zc*seh
+a <- x1; b <- n1 - x1; cc <- x2; d <- n2 - x2
+hacorr <- (a == 0 || b == 0 || cc == 0 || d == 0)
+if (hacorr) { a <- a+0.5; b <- b+0.5; cc <- cc+0.5; d <- d+0.5 }
+RR <- (a/(a+b))/(cc/(cc+d)); selrr <- sqrt(1/a - 1/(a+b) + 1/cc - 1/(cc+d))
+rrlo <- exp(log(RR) - zc*selrr); rrup <- exp(log(RR) + zc*selrr)
+OR <- (a*d)/(b*cc); selor <- sqrt(1/a + 1/b + 1/cc + 1/d)
+orlo <- exp(log(OR) - zc*selor); orup <- exp(log(OR) + zc*selor)
+cat(sprintf("Comparison: %s vs %s; success = %s\\n\\n", gl[1], gl[2], su))
+print(ptst)
+cat(sprintf("\\np1 (%s) = %.4f [x=%d, n=%d];  p2 (%s) = %.4f [x=%d, n=%d]\\n", gl[1], p1, x1, n1, gl[2], p2, x2, n2))
+cat(sprintf("Difference p1 - p2 = %.4f, %.0f%% Newcombe CI [%.4f, %.4f]\\n", diff, conf*100, dlo, dup))
+cat(sprintf("Cohen's h = %.3f, %.0f%% CI [%.3f, %.3f]\\n", h, conf*100, hlo, hup))
+cat(sprintf("Risk ratio = %.3f, %.0f%% CI [%.3f, %.3f]\\n", RR, conf*100, rrlo, rrup))
+cat(sprintf("Odds ratio = %.3f, %.0f%% CI [%.3f, %.3f]\\n", OR, conf*100, orlo, orup))
+if (hacorr) cat("Note: a cell count was 0; Haldane-Anscombe +0.5 correction applied to RR and OR.\\n")
+c(x1=x1,n1=n1,p1=p1, x2=x2,n2=n2,p2=p2, z=zstat, p=ptst$p.value,
+  diff=diff, dlo=dlo, dup=dup, h=h, hlo=hlo, hup=hup,
+  RR=RR, rrlo=rrlo, rrup=rrup, OR=OR, orlo=orlo, orup=orup, hac=as.numeric(hacorr))`,
+    render(R, ctx){
+      const outcome=ctx.cols.outcome, group=ctx.cols.group, success=ctx.env.success;
+      const [g1,g2]=ctx.levels.group, ci=pct(ctx.conf);
+      const hacH = R.hac===1 ? ` A Haldane\u2013Anscombe correction (+0.5 per cell) was applied to RR and OR because a cell count was zero (Haldane, 1956; Anscombe, 1956).` : '';
+      const hacP = R.hac===1 ? ` A Haldane-Anscombe correction (+0.5 per cell) was applied to RR and OR because a cell count was zero (Haldane, 1956; Anscombe, 1956).` : '';
+      return buildAPA({
+        title:`Two-Proportion Test for ${outcome} (success = ${success}) by ${group}`,
+        headers:[{t:group},{t:'x',it:true,num:true},{t:'n',it:true,num:true},{t:'p\u0302',num:true}],
+        rows:[
+          [{t:g1},{t:R.x1,num:true},{t:R.n1,num:true},{t:nzsig(R.p1)}],
+          [{t:g2},{t:R.x2,num:true},{t:R.n2,num:true},{t:nzsig(R.p2)}]
+        ],
+        note:{
+          html:`<i>Note.</i> <i>z</i> = ${f2(R.z)}, <i>p</i> ${pFmt(R.p)}, ${sidedTxt(ctx.env.alt)}. Difference (<i>p&#770;</i><sub>${g1}</sub> \u2212 <i>p&#770;</i><sub>${g2}</sub>) = ${nzsig(R.diff)}, ${ci} Newcombe CI [${nzsig(R.dlo)}, ${nzsig(R.dup)}]. Cohen's <i>h</i> = ${f2(R.h)}, ${ci} CI [${f2(R.hlo)}, ${f2(R.hup)}]. Risk ratio = ${f2(R.RR)}, ${ci} CI [${f2(R.rrlo)}, ${f2(R.rrup)}]. Odds ratio = ${f2(R.OR)}, ${ci} CI [${f2(R.orlo)}, ${f2(R.orup)}].${hacH}`,
+          plain:`Note. z = ${f2(R.z)}, p ${pFmt(R.p)}, ${sidedTxt(ctx.env.alt)}. Difference (p-hat[${g1}] - p-hat[${g2}]) = ${nzsig(R.diff)}, ${ci} Newcombe CI [${nzsig(R.dlo)}, ${nzsig(R.dup)}]. Cohen's h = ${f2(R.h)}, ${ci} CI [${f2(R.hlo)}, ${f2(R.hup)}]. Risk ratio = ${f2(R.RR)}, ${ci} CI [${f2(R.rrlo)}, ${f2(R.rrup)}]. Odds ratio = ${f2(R.OR)}, ${ci} CI [${f2(R.orlo)}, ${f2(R.orup)}].${hacP}`
+        }
+      });
+    }
+  },
+
+  linreg: {
+    label: "Simple linear regression (+ Pearson r, plots)",
+    dropHint: "Two numeric columns: a response (Y) and a single predictor (X).",
+    methodNote: "<b>Interval methods.</b> Coefficient intervals use the <i>t</i> distribution; the Pearson correlation interval uses the Fisher <i>z</i> transformation (cor.test). The plot's inner (darker) band is the confidence band for the mean response; the outer (lighter) band is the prediction band for a single new observation. <i>R</i>\u00B2 is the proportion of variance in the response explained by the predictor; adjusted <i>R</i>\u00B2 penalizes for model complexity.",
+    roles: [
+      { key:'response',  kind:'numeric', label:'Response (Y) — numeric outcome' },
+      { key:'predictor', kind:'numeric', label:'Predictor (X) — numeric' }
+    ],
+    params: [
+      { key:'x0', type:'number', optional:true, default:'', label:'Predict at X = (optional) — leave blank to skip the prediction' }
+    ],
+    packages: ['ggplot2'],
+    plotCaptions: ['Regression with confidence and prediction bands', 'Residuals vs fitted (right axis: standardized)', 'Normal Q-Q of residuals'],
+    defaults: { response:'bmd', predictor:'age' },
+    resultKeys: ['b0','b0se','b0t','b0p','b0l','b0u','b1','b1se','b1t','b1p','b1l','b1u','f','df1','df2','fp','r2','adjr2','r','rl','ru','n','px','pcl','pcu','ppl','ppu'],
+    rProgram: `
+y <- as.numeric(response); x <- as.numeric(predictor)
+fit <- lm(y ~ x); s <- summary(fit); co <- s$coefficients
+ci <- confint(fit, level = conf)
+fstat <- unname(s$fstatistic[1]); df1 <- unname(s$fstatistic[2]); df2 <- unname(s$fstatistic[3])
+ct <- cor.test(x, y, conf.level = conf)
+print(s)
+cat(sprintf("\\n%.0f%% CI for coefficients:\\n", conf*100)); print(ci)
+cat(sprintf("\\nPearson r = %.4f, %.0f%% CI [%.4f, %.4f] (Fisher z)\\n", unname(ct$estimate), conf*100, ct$conf.int[1], ct$conf.int[2]))
+if (is.finite(x0)) {
+  nd <- data.frame(x = x0)
+  pcf <- predict(fit, nd, interval = "confidence", level = conf)
+  ppf <- predict(fit, nd, interval = "prediction", level = conf)
+  px <- pcf[1,1]; pcl <- pcf[1,2]; pcu <- pcf[1,3]; ppl <- ppf[1,2]; ppu <- ppf[1,3]
+  cat(sprintf("\\nPrediction at X = %g:\\n  fitted mean = %.4f\\n  %.0f%% confidence interval (mean response) [%.4f, %.4f]\\n  %.0f%% prediction interval (new observation) [%.4f, %.4f]\\n",
+              x0, px, conf*100, pcl, pcu, conf*100, ppl, ppu))
+} else { px <- NaN; pcl <- NaN; pcu <- NaN; ppl <- NaN; ppu <- NaN }
+suppressMessages(library(ggplot2))
+gr <- data.frame(x = seq(min(x), max(x), length.out = 200))
+pcb <- predict(fit, gr, interval = "confidence", level = conf)
+ppb <- predict(fit, gr, interval = "prediction", level = conf)
+gr$fit <- pcb[,1]; gr$cl <- pcb[,2]; gr$cu <- pcb[,3]; gr$pl <- ppb[,2]; gr$pu <- ppb[,3]
+ACC <- '#0f6b5c'
+print(ggplot() +
+  geom_ribbon(data = gr, aes(x, ymin = pl, ymax = pu), fill = ACC, alpha = .10) +
+  geom_ribbon(data = gr, aes(x, ymin = cl, ymax = cu), fill = ACC, alpha = .25) +
+  geom_line(data = gr, aes(x, fit), color = ACC, linewidth = 1) +
+  geom_point(data = data.frame(x = x, y = y), aes(x, y), alpha = .5, color = ACC) +
+  theme_minimal(base_size = 13) + labs(x = predictor_name, y = response_name, title = "Regression line with confidence and prediction bands"))
+rf <- data.frame(fitted = fitted(fit), resid = resid(fit)); sig <- s$sigma
+print(ggplot(rf, aes(fitted, resid)) +
+  geom_hline(yintercept = 0, linetype = 2) +
+  geom_hline(yintercept = c(-2, 2)*sig, linetype = 3, colour = "grey55") +
+  geom_hline(yintercept = c(-3, 3)*sig, linetype = 3, colour = "grey78") +
+  geom_point(alpha = .5, color = ACC) +
+  scale_y_continuous(sec.axis = sec_axis(~ . / sig, name = "Standardized residual (residual / s)", breaks = -3:3)) +
+  theme_minimal(base_size = 13) +
+  labs(x = "Fitted value", y = "Residual", title = "Residuals vs fitted (right axis: standardized)"))
+print(ggplot(rf, aes(sample = resid)) + stat_qq(alpha = .5, color = ACC) + stat_qq_line(color = ACC) +
+  theme_minimal(base_size = 13) + labs(x = "Theoretical quantile", y = "Residual", title = "Normal Q-Q of residuals"))
+c(b0=co[1,1], b0se=co[1,2], b0t=co[1,3], b0p=co[1,4], b0l=ci[1,1], b0u=ci[1,2],
+  b1=co[2,1], b1se=co[2,2], b1t=co[2,3], b1p=co[2,4], b1l=ci[2,1], b1u=ci[2,2],
+  f=fstat, df1=df1, df2=df2, fp=pf(fstat, df1, df2, lower.tail=FALSE),
+  r2=s$r.squared, adjr2=s$adj.r.squared,
+  r=unname(ct$estimate), rl=ct$conf.int[1], ru=ct$conf.int[2], n=length(y),
+  px=px, pcl=pcl, pcu=pcu, ppl=ppl, ppu=ppu)`,
+    render(R, ctx){
+      const resp=ctx.cols.response, pred=ctx.cols.predictor, ci=pct(ctx.conf);
+      const pc = p => p < .001 ? '< .001' : nz(p,3);
+      const x0 = ctx.env.x0;
+      let predH='', predP='';
+      if(Number.isFinite(R.px)){
+        predH = ` Predicted at ${pred} = ${x0}: fitted ${resp} = ${f2(R.px)}, ${ci} confidence interval for the mean [${f2(R.pcl)}, ${f2(R.pcu)}], ${ci} prediction interval for a new observation [${f2(R.ppl)}, ${f2(R.ppu)}].`;
+        predP = ` Predicted at ${pred} = ${x0}: fitted ${resp} = ${f2(R.px)}, ${ci} confidence interval for the mean [${f2(R.pcl)}, ${f2(R.pcu)}], ${ci} prediction interval for a new observation [${f2(R.ppl)}, ${f2(R.ppu)}].`;
+      }
+      return buildAPA({
+        title:`Simple Linear Regression: ${resp} predicted from ${pred}`,
+        headers:[{t:'Term'},{t:'B',it:true,num:true},{t:'SE',it:true,num:true},{t:'t',it:true,num:true},{t:'p',it:true,num:true},{t:`${ci} CI`,num:true}],
+        rows:[
+          [{t:'(Intercept)'},{t:fsig(R.b0),num:true},{t:fsig(R.b0se),num:true},{t:f2(R.b0t),num:true},{t:pc(R.b0p),num:true},{t:`[${fsig(R.b0l)}, ${fsig(R.b0u)}]`,num:true}],
+          [{t:pred},{t:fsig(R.b1),num:true},{t:fsig(R.b1se),num:true},{t:f2(R.b1t),num:true},{t:pc(R.b1p),num:true},{t:`[${fsig(R.b1l)}, ${fsig(R.b1u)}]`,num:true}]
+        ],
+        note:{
+          html:`<i>Note.</i> Overall model: <i>F</i>(${R.df1}, ${R.df2}) = ${f2(R.f)}, <i>p</i> ${pFmt(R.fp)}. <i>R</i><sup>2</sup> = ${nz(R.r2)}, adjusted <i>R</i><sup>2</sup> = ${nz(R.adjr2)}. Pearson <i>r</i> = ${nz(R.r)}, ${ci} CI [${nz(R.rl)}, ${nz(R.ru)}] (Fisher <i>z</i>). <i>n</i> = ${R.n}.${predH}`,
+          plain:`Note. Overall model: F(${R.df1}, ${R.df2}) = ${f2(R.f)}, p ${pFmt(R.fp)}. R^2 = ${nz(R.r2)}, adjusted R^2 = ${nz(R.adjr2)}. Pearson r = ${nz(R.r)}, ${ci} CI [${nz(R.rl)}, ${nz(R.ru)}] (Fisher z). n = ${R.n}.${predP}`
+        }
+      });
+    }
+  },
+
+  welch_anova: {
+    label: "One-way Welch ANOVA (+ Games-Howell, adjusted ω²)",
+    dropHint: "Long/tidy data: a numeric outcome column and a grouping column with 3 or more levels.",
+    roles: [
+      { key:'resp', kind:'numeric',     label:'Response — numeric outcome' },
+      { key:'grp',  kind:'group_anova', label:'Group — 3 to 12 levels' }
+    ],
+    defaults: { resp:'weight', grp:'feed' },
+    rProgram: `
+suppressMessages(library(WAnova))
+d <- data.frame(y = as.numeric(resp), g = factor(grp))
+lv <- levels(d$g); k <- length(lv)
+ns <- as.numeric(tapply(d$y, d$g, length))
+ms <- as.numeric(tapply(d$y, d$g, mean))
+ss <- as.numeric(tapply(d$y, d$g, sd))
+fit <- welch_anova.test(lv, ns, ms, ss, effsize = "AnL")
+summary(fit)
+Fv <- fit$f_value; df1 <- fit$df_between; df2 <- fit$df_within; pv <- fit$p_value; om <- fit$omega_sq
+# analytic noncentral-F CI for adjusted omega-squared on Welch df, at the scaled 2C-1 level
+alpha_s <- 2*(1 - conf)
+p0 <- pf(Fv, df1, df2)
+big <- max(100, df1*Fv*10); while (pf(Fv, df1, df2, big) > alpha_s/2 && big < 1e8) big <- big*2
+lam_lo <- if (p0 <= 1 - alpha_s/2) 0 else uniroot(function(l) pf(Fv, df1, df2, l) - (1 - alpha_s/2), c(0, big))$root
+lam_hi <- if (p0 <= alpha_s/2)     0 else uniroot(function(l) pf(Fv, df1, df2, l) - alpha_s/2,       c(0, big))$root
+om_lo <- lam_lo/(lam_lo + df1 + df2 + 1)
+om_hi <- lam_hi/(lam_hi + df1 + df2 + 1)
+cat(sprintf("Adjusted omega-squared (AnL) = %.4f, %.0f%% CI [%.4f, %.4f]\\n", om, (2*conf-1)*100, om_lo, om_hi))
+cat("(analytic noncentral-F interval on Welch df; scaled level 2C-1)\\n\\n")
+# Games-Howell pairwise comparisons, run unconditionally
+cat(sprintf("Games-Howell pairwise comparisons (%.0f%% CIs):\\n", conf*100))
+gi <- c(); gj <- c(); gd <- c(); glo <- c(); ghi <- c(); gt <- c(); gdf <- c(); gp <- c()
+for (i in 1:(k-1)) for (j in (i+1):k) {
+  se <- sqrt(ss[i]^2/ns[i] + ss[j]^2/ns[j])
+  dfij <- (ss[i]^2/ns[i] + ss[j]^2/ns[j])^2 / ((ss[i]^2/ns[i])^2/(ns[i]-1) + (ss[j]^2/ns[j])^2/(ns[j]-1))
+  dd <- ms[i] - ms[j]
+  tt <- dd/se
+  pp <- ptukey(abs(tt)*sqrt(2), k, dfij, lower.tail = FALSE)
+  hw <- qtukey(conf, k, dfij)/sqrt(2)*se
+  cat(sprintf("  %s - %s: diff = %.4f, CI [%.4f, %.4f], t = %.3f, df = %.2f, p = %.5g\\n",
+      lv[i], lv[j], dd, dd-hw, dd+hw, tt, dfij, pp))
+  gi <- c(gi, lv[i]); gj <- c(gj, lv[j]); gd <- c(gd, dd); glo <- c(glo, dd-hw); ghi <- c(ghi, dd+hw)
+  gt <- c(gt, tt); gdf <- c(gdf, dfij); gp <- c(gp, pp)
+}
+list(lv = lv, ns = ns, ms = ms, ss = ss, k = k,
+     f = Fv, df1 = df1, df2 = df2, p = pv, om = om, oml = om_lo, omu = om_hi,
+     gi = gi, gj = gj, gd = gd, glo = glo, ghi = ghi, gt = gt, gdf = gdf, gp = gp)`,
+    async run({env, cols, active, used, dropped}){
+      document.getElementById('edaOut').classList.add('hidden');
+      if(!installed.has('WAnova')){ setStatus('Installing WAnova (one-time download)…',{busy:true}); await webR.installPackages(['WAnova']); installed.add('WAnova'); }
+      setStatus('Running in R…',{busy:true});
+      const shelter = await new webR.Shelter();
+      try{
+        const cap = await shelter.captureR(this.rProgram, { env });
+        const consoleText = cap.output.filter(o=>o.type==='stdout'||o.type==='stderr').map(o=>o.data).join('\n');
+        const R = rlistToObj(await cap.result.toJs());
+        const grp=cols.grp, resp=cols.resp, ci=pct(env.conf);
+        const ciPct = Math.round((2*env.conf - 1)*100), confPct = Math.round(env.conf*100);
+        const k=R.k[0], lv=R.lv;
+        const pcell = p => p < .001 ? '< .001' : nz(p,3);
+        // descriptives + omnibus
+        const rows = lv.map((g,i)=>[
+          {t:String(g)},{t:R.ns[i],num:true},{t:f2(R.ms[i]),num:true},{t:f2(R.ss[i]),num:true}
+        ]);
+        const note = {
+          html:`<i>Note.</i> Welch's <i>F</i>(${R.df1[0]}, ${fdf(R.df2[0])}) = ${f2(R.f[0])}, <i>p</i> ${pFmt(R.p[0])}. Adjusted \u03C9\u00B2 = ${nz(R.om[0])}, ${ciPct}% CI [${nz(R.oml[0])}, ${nz(R.omu[0])}].`,
+          plain:`Note. Welch's F(${R.df1[0]}, ${fdf(R.df2[0])}) = ${f2(R.f[0])}, p ${pFmt(R.p[0])}. Adjusted omega-squared = ${nz(R.om[0])}, ${ciPct}% CI [${nz(R.oml[0])}, ${nz(R.omu[0])}].`
+        };
+        const main = buildAPA({
+          title:`Descriptive Statistics and Welch's ANOVA for ${resp} by ${grp}`,
+          headers:[{t:grp},{t:'n',it:true,num:true},{t:'M',it:true,num:true},{t:'SD',it:true,num:true}],
+          rows, note
+        });
+        // Games-Howell table
+        const ghRows = [];
+        for(let r=0;r<R.gd.length;r++){
+          ghRows.push([
+            {t:`${String(R.gi[r])} \u2212 ${String(R.gj[r])}`},
+            {t:f2(R.gd[r]),num:true},
+            {t:`[${f2(R.glo[r])}, ${f2(R.ghi[r])}]`,num:true},
+            {t:f2(R.gt[r]),num:true},
+            {t:f2(R.gdf[r]),num:true},
+            {t:pcell(R.gp[r]),num:true}
+          ]);
+        }
+        const t2 = buildAPA({
+          num:2,
+          title:`Games-Howell Pairwise Comparisons of ${resp} by ${grp} (${ci} CIs)`,
+          headers:[{t:'Comparison'},{t:'<i>M</i> diff.',p:'M diff.',num:true},{t:`${ci} CI`,num:true},
+                   {t:'t',it:true,num:true},{t:'df',it:true,num:true},{t:'p',it:true,num:true}],
+          rows:ghRows,
+          note:{
+            html:`<i>Note.</i> Games-Howell controls the familywise error rate across all ${R.gd.length} comparisons, so the intervals and the <i>p</i>-values carry the same adjustment.`,
+            plain:`Note. Games-Howell controls the familywise error rate across all ${R.gd.length} comparisons, so the intervals and the p-values carry the same adjustment.`
+          }
+        });
+        document.getElementById('console').textContent = consoleText;
+        document.getElementById('apa').innerHTML = main.screenHtml + sub2(t2);
+        lastResult = {
+          plain: `${main.plain}\n\n${t2.plain}`,
+          htmlTable: main.copyHtml + '<br>' + t2.copyHtml
+        };
+        document.getElementById('outStep').classList.remove('hidden');
+        const methodNote = `<b>Why these methods.</b> Welch's <i>F</i> is the default because the classical <i>F</i> is not robust to unequal variances and pretesting them does not help (Delacre, Leys, Mora &amp; Lakens, 2019). Games-Howell is the matching post hoc under unequal variances and <i>n</i>'s (Games &amp; Howell, 1976; Sauder &amp; DeMars, 2019), and it runs unconditionally \u2014 it controls the familywise error rate on its own, so it needs no significant omnibus <i>F</i> first (Bernhardson, 1975; Hayter, 1986). Adjusted \u03C9\u00B2 (Albers &amp; Lakens, 2018) incorporates Welch's corrected df. You selected ${confPct}%, but the \u03C9\u00B2 interval is shown as a ${ciPct}% CI: because the <i>F</i> test is one-sided, a ${ciPct}% two-sided interval corresponds to the ${confPct}% test (Steiger, 2004; Lakens, 2013). The \u03C9\u00B2 interval inverts a noncentral <i>F</i> on Welch df \u2014 exact under equal variances, an accepted approximation otherwise.`;
+        const mn=document.getElementById('methodNote'); mn.innerHTML=methodNote; mn.classList.remove('hidden');
+        setStatus(`Done. ${used} rows used${dropped?`, ${dropped} dropped for missing values`:''}.`);
+      } finally { await shelter.purge(); }
+    }
+  },
+
+  fisher: {
+    label: "Fisher's exact test (independence, sparse tables)",
+    sided: true,
+    dropHint: "Two categorical columns. If your data is pre-aggregated (one row per cell with a frequency), also pick the counts column. Use this when expected counts are small.",
+    roles: [
+      { key:'row',    kind:'categorical', label:'Row variable — categorical' },
+      { key:'col',    kind:'categorical', label:'Column variable — categorical' },
+      { key:'counts', kind:'numeric',     label:'Counts (optional) — frequency per cell, for pre-aggregated data', optional:true }
+    ],
+    params: [
+      { key:'rowfirst', type:'level', fromRole:'row', default:'first', label:'Row order — level to place in the first row (e.g. the exposed group)' },
+      { key:'colfirst', type:'level', fromRole:'col', default:'first', label:'Column order — level to place in the first column (e.g. the outcome of interest)' }
+    ],
+    defaults: { row:'Gender', col:'Age', counts:'Count' },
+    rProgram: `
+rf <- factor(row); cf <- factor(col)
+if (nchar(rowfirst) && rowfirst %in% levels(rf)) rf <- relevel(rf, ref = rowfirst)
+if (nchar(colfirst) && colfirst %in% levels(cf)) cf <- relevel(cf, ref = colfirst)
+if (exists("counts")) {
+  dd <- data.frame(rf = rf, cf = cf, w = as.numeric(counts))
+  tab <- xtabs(w ~ rf + cf, data = dd)
+} else { tab <- table(rf, cf) }
+nr <- nrow(tab); nc <- ncol(tab)
+exact_ok <- 1
+ft <- tryCatch(fisher.test(tab, conf.level = conf, alternative = alt), error = function(e) NULL)
+if (is.null(ft)) { exact_ok <- 0; set.seed(20260507); ft <- fisher.test(tab, simulate.p.value = TRUE, B = 1e5) }
+print(ft)
+cat("\\nObserved counts:\\n"); print(tab)
+expc <- suppressWarnings(chisq.test(tab, correct = FALSE))$expected
+cat("\\nExpected counts (reference for the chi-square approximation):\\n"); print(round(expc, 2))
+is22 <- as.numeric(nr == 2 && nc == 2)
+orv <- if (is22 == 1) unname(ft$estimate) else NA
+orl <- if (is22 == 1) ft$conf.int[1] else NA
+oru <- if (is22 == 1) ft$conf.int[2] else NA
+list(p = ft$p.value, or = orv, orl = orl, oru = oru, is22 = is22, mc = 1 - exact_ok,
+     minexp = min(expc), N = sum(tab), nr = nr, nc = nc,
+     rowlab = rownames(tab), collab = colnames(tab), obs = as.vector(t(tab)))`,
+    async run({env, cols, active, used, dropped}){
+      document.getElementById('edaOut').classList.add('hidden');
+      setStatus('Running in R…',{busy:true});
+      const shelter = await new webR.Shelter();
+      try{
+        const cap = await shelter.captureR(this.rProgram, { env });
+        const consoleText = cap.output.filter(o=>o.type==='stdout'||o.type==='stderr').map(o=>o.data).join('\n');
+        const R = rlistToObj(await cap.result.toJs());
+        const nr=R.nr[0], nc=R.nc[0], obs=R.obs, rowlab=R.rowlab, collab=R.collab;
+        const rowName=cols.row, colName=cols.col, ci=pct(env.conf);
+        const headers=[{t:rowName}].concat(collab.map(c=>({t:String(c), num:true})));
+        const rows=[];
+        for(let i=0;i<nr;i++){ rows.push([{t:String(rowlab[i])}].concat(collab.map((_,j)=>({t:obs[i*nc+j], num:true})))); }
+        const is22 = R.is22[0]===1, mc = R.mc[0]===1;
+        const orH = is22 ? ` Odds ratio (conditional MLE) = ${f2(R.or[0])}, ${ci} exact CI [${fci(R.orl[0])}, ${fci(R.oru[0])}].` : '';
+        const orP = is22 ? ` Odds ratio (conditional MLE) = ${f2(R.or[0])}, ${ci} exact CI [${fci(R.orl[0])}, ${fci(R.oru[0])}].` : '';
+        const mcH = mc ? ` The table was too large for exact enumeration; the p-value is from a seeded Monte Carlo simulation (100,000 tables) and is reproducible.` : '';
+        const sided = is22 ? sidedTxt(env.alt) : 'two-sided';
+        const sideCaveat = (!is22 && env.alt!=='two.sided') ? ` (a one-sided alternative applies only to 2\u00D72 tables; the two-sided test was run)` : '';
+        const note = {
+          html:`<i>Note.</i> Fisher's exact test, <i>N</i> = ${R.N[0]}, <i>p</i> ${pFmt(R.p[0])}, ${sided}${sideCaveat}.${orH}${mcH}`,
+          plain:`Note. Fisher's exact test, N = ${R.N[0]}, p ${pFmt(R.p[0])}, ${sided}${sideCaveat}.${orP}${mcH}`
+        };
+        const main = buildAPA({ title:`Contingency Table and Fisher's Exact Test of ${rowName} by ${colName}`, headers, rows, note });
+        document.getElementById('console').textContent = consoleText;
+        document.getElementById('apa').innerHTML = main.screenHtml;
+        lastResult = { plain: main.plain, htmlTable: main.copyHtml };
+        document.getElementById('outStep').classList.remove('hidden');
+        const methodNote = `<b>Why this test.</b> Fisher's exact test computes the <i>p</i>-value from the exact hypergeometric distribution rather than the \u03C7\u00B2 approximation, so it remains valid when expected cell counts are small \u2014 exactly where the \u03C7\u00B2 test breaks down (min expected here: ${f2(R.minexp[0])}). For a 2\u00D72 table the reported odds ratio is the conditional maximum-likelihood estimate with an exact interval, which can differ slightly from the sample (Wald) odds ratio in the two-proportion module.`;
+        const mn=document.getElementById('methodNote'); mn.innerHTML=methodNote; mn.classList.remove('hidden');
+        setStatus(`Done. ${used} rows used${dropped?`, ${dropped} dropped for missing values`:''}.`);
+      } finally { await shelter.purge(); }
+    }
+  },
+
+  emt_gof: {
+    label: "Exact multinomial goodness-of-fit (EMT)",
+    dropHint: "One categorical column. If pre-aggregated (one row per category with a frequency), also pick the counts column. Use this when expected counts are small.",
+    roles: [
+      { key:'variable', kind:'categorical', label:'Variable — categorical' },
+      { key:'counts',   kind:'numeric',     label:'Counts (optional) — frequency per category, for pre-aggregated data', optional:true }
+    ],
+    params: [
+      { key:'propstr', type:'text', label:'Expected proportions (optional) — comma-separated, in category order shown below; blank = equal', default:'' }
+    ],
+    levelsPreview: 'variable',
+    defaults: { variable:'Age', counts:'Count' },
+    rProgram: `
+v <- factor(variable)
+if (exists("counts")) { dd <- data.frame(v = v, w = as.numeric(counts)); tab <- xtabs(w ~ v, data = dd) } else { tab <- table(v) }
+k <- length(tab); N <- sum(tab)
+ps <- suppressWarnings(as.numeric(trimws(strsplit(propstr, ",")[[1]])))
+ps <- ps[is.finite(ps)]
+if (length(ps) == k && all(ps > 0)) { p <- ps/sum(ps) } else { p <- rep(1/k, k) }
+suppressMessages(library(EMT))
+ncomp <- choose(N + k - 1, k - 1)
+if (is.finite(ncomp) && ncomp <= 2e6) {
+  res <- multinomial.test(as.numeric(tab), p); mc <- 0
+} else {
+  set.seed(20260507)
+  res <- multinomial.test(as.numeric(tab), p, MonteCarlo = TRUE, ntrial = 100000); mc <- 1
+}
+expv <- N * p
+w <- sqrt(sum((as.numeric(tab) - expv)^2 / expv) / N)
+cat("\\nObserved counts:\\n"); print(tab)
+cat("\\nExpected counts:\\n"); print(round(expv, 2))
+cat(sprintf("\\nExpected proportions used: %s\\n", paste(round(p, 4), collapse = ", ")))
+cat(sprintf("Exact multinomial p = %.6g%s\\n", res$p.value,
+    ifelse(mc == 1, " (seeded Monte Carlo, 100,000 trials)", " (exact enumeration)")))
+list(p = res$p.value, mc = mc, k = k, N = N, w = w,
+     lab = names(tab), obs = as.vector(tab), expv = as.vector(expv))`,
+    async run({env, cols, active, used, dropped}){
+      document.getElementById('edaOut').classList.add('hidden');
+      if(!installed.has('EMT')){ setStatus('Installing EMT (one-time download)…',{busy:true}); await webR.installPackages(['EMT']); installed.add('EMT'); }
+      setStatus('Running in R… (exact enumeration can take a moment)',{busy:true});
+      const shelter = await new webR.Shelter();
+      try{
+        const cap = await shelter.captureR(this.rProgram, { env });
+        const consoleText = cap.output.filter(o=>o.type==='stdout'||o.type==='stderr').map(o=>o.data).join('\n');
+        const R = rlistToObj(await cap.result.toJs());
+        const k=R.k[0], lab=R.lab, obs=R.obs, exp=R.expv, varName=cols.variable;
+        const headers=[{t:varName},{t:'Observed',num:true},{t:'Expected',num:true}];
+        const rows=[];
+        for(let i=0;i<k;i++){ rows.push([{t:String(lab[i])},{t:obs[i],num:true},{t:f2(exp[i]),num:true}]); }
+        const mc = R.mc[0]===1;
+        const mcTxt = mc ? ` The p-value is from a seeded Monte Carlo simulation (100,000 trials; exact enumeration infeasible at this n) and is reproducible.` : '';
+        const note = {
+          html:`<i>Note.</i> Exact multinomial test, <i>N</i> = ${R.N[0]}, <i>p</i> ${pFmt(R.p[0])}. Cohen's <i>w</i> = ${f2(R.w[0])} (descriptive).${mcTxt}`,
+          plain:`Note. Exact multinomial test, N = ${R.N[0]}, p ${pFmt(R.p[0])}. Cohen's w = ${f2(R.w[0])} (descriptive).${mcTxt}`
+        };
+        const out = buildAPA({ title:`Exact Multinomial Goodness-of-Fit Test for ${varName}`, headers, rows, note });
+        document.getElementById('console').textContent = consoleText;
+        document.getElementById('apa').innerHTML = out.screenHtml;
+        lastResult = { plain: out.plain, htmlTable: out.copyHtml };
+        document.getElementById('outStep').classList.remove('hidden');
+        const methodNote = `<b>Why this test.</b> The exact multinomial test computes the <i>p</i>-value from the multinomial distribution itself rather than the \u03C7\u00B2 approximation, so it remains valid when expected counts are small. When the category/count combination is too large to enumerate, the tool switches to a seeded Monte Carlo version \u2014 deterministic and reproducible. Cohen's <i>w</i> is shown as a descriptive index of departure from the expected proportions; for a <i>w</i> interval, use the chi-square goodness-of-fit module.`;
+        const mn=document.getElementById('methodNote'); mn.innerHTML=methodNote; mn.classList.remove('hidden');
+        setStatus(`Done. ${used} rows used${dropped?`, ${dropped} dropped for missing values`:''}.`);
+      } finally { await shelter.purge(); }
+    }
+  },
+
+  mcnemar: {
+    label: "McNemar's test (paired proportions)",
+    dropHint: "Two categorical columns with 2 levels each (e.g. pre and post status), one row per subject or matched pair. If pre-aggregated (one row per cell with a frequency), also pick the counts column.",
+    sided: true,
+    roles: [
+      { key:'pre',    kind:'group2',  label:'First measure (e.g. pre) — categorical, exactly 2 levels' },
+      { key:'post',   kind:'group2',  label:'Second measure (e.g. post) — categorical, exactly 2 levels' },
+      { key:'counts', kind:'numeric', label:'Counts (optional) — frequency per cell, for pre-aggregated data', optional:true }
+    ],
+    params: [
+      { key:'success', type:'level', fromRole:'pre', default:'last', label:'Success category — the level counted as a success in both columns' }
+    ],
+    defaults: {},
+    rProgram: `
+su <- success
+pr <- as.character(pre); po <- as.character(post)
+w <- if (exists("counts")) as.numeric(counts) else rep(1, length(pr))
+a  <- sum(w[pr == su & po == su]); b <- sum(w[pr == su & po != su])
+cc <- sum(w[pr != su & po == su]); d <- sum(w[pr != su & po != su])
+n <- a + b + cc + d
+pt <- (a + b)/n; ps <- (a + cc)/n; D <- pt - ps
+nd <- b + cc
+tab <- matrix(c(a, b, cc, d), 2, 2, byrow = TRUE,
+  dimnames = list(pre = c(su, paste0("not ", su)), post = c(su, paste0("not ", su))))
+cat("Paired 2x2 table (rows = first measure, columns = second measure):\\n"); print(tab)
+if (nd > 0) {
+  z <- (b - cc)/sqrt(nd)
+  chi2 <- z^2
+  pchi <- switch(alt, less = pnorm(z), greater = pnorm(z, lower.tail = FALSE), 2*pnorm(-abs(z)))
+  print(mcnemar.test(tab, correct = FALSE))
+  bt <- binom.test(b, nd, 0.5, alternative = alt)
+  cat("Exact binomial test on the discordant pairs:\\n"); print(bt)
+  pex <- bt$p.value
+} else { z <- 0; chi2 <- 0; pchi <- 1; pex <- 1; cat("No discordant pairs: the two measures never disagree; p = 1.\\n") }
+useex <- as.numeric(nd > 0 && nd < 25)
+zc <- qnorm(1 - (1 - conf)/2)
+wil <- function(x, nn){ ph <- x/nn; cen <- (ph + zc^2/(2*nn))/(1 + zc^2/nn)
+  hw <- (zc/(1 + zc^2/nn))*sqrt(ph*(1-ph)/nn + zc^2/(4*nn^2)); c(cen - hw, cen + hw) }
+wt <- wil(a + b, n); ws <- wil(a + cc, n)
+if ((a+b) == 0 || (cc+d) == 0 || (a+cc) == 0 || (b+d) == 0) { rho <- 0 } else {
+  A <- (a+b)*(cc+d)*(a+cc)*(b+d); B <- a*d - b*cc
+  Cv <- if (B > n/2) B - n/2 else if (B >= 0) 0 else B
+  rho <- Cv/sqrt(A) }
+DL <- D - sqrt(max(0, (pt - wt[1])^2 - 2*rho*(pt - wt[1])*(ws[2] - ps) + (ws[2] - ps)^2))
+DU <- D + sqrt(max(0, (ps - ws[1])^2 - 2*rho*(ps - ws[1])*(wt[2] - pt) + (wt[2] - pt)^2))
+if (nd > 0) {
+  th <- binom.test(b, nd, conf.level = conf)$conf.int
+  orv <- if (cc > 0) b/cc else Inf
+  orl <- th[1]/(1 - th[1]); oru <- if (th[2] < 1) th[2]/(1 - th[2]) else Inf
+} else { orv <- NaN; orl <- NaN; oru <- NaN }
+cat(sprintf("\\nDifference in proportions (first - second) = %.4f, %.0f%% Newcombe paired CI [%.4f, %.4f]\\n", D, conf*100, DL, DU))
+cat(sprintf("Paired (conditional) odds ratio b/c = %s, %.0f%% exact CI [%s, %s]\\n",
+    format(orv, digits=4), conf*100, format(orl, digits=4), format(oru, digits=4)))
+list(a=a, b=b, cc=cc, d=d, n=n, nd=nd, pt=pt, ps=ps, D=D, DL=DL, DU=DU,
+     chi2=chi2, z=z, pchi=pchi, pex=pex, useex=useex, orv=orv, orl=orl, oru=oru)`,
+    async run({env, cols, active, used, dropped}){
+      document.getElementById('edaOut').classList.add('hidden');
+      setStatus('Running in R…',{busy:true});
+      const shelter = await new webR.Shelter();
+      try{
+        const cap = await shelter.captureR(this.rProgram, { env });
+        const consoleText = cap.output.filter(o=>o.type==='stdout'||o.type==='stderr').map(o=>o.data).join('\n');
+        const R = rlistToObj(await cap.result.toJs());
+        const su = env.success, preName = cols.pre, postName = cols.post, ci = pct(env.conf);
+        const useex = R.useex[0]===1;
+        const headers=[{t:`${preName} \\ ${postName}`},{t:String(su),num:true},{t:`not ${su}`,num:true}];
+        const rows=[
+          [{t:String(su)},{t:R.a[0],num:true},{t:R.b[0],num:true}],
+          [{t:`not ${su}`},{t:R.cc[0],num:true},{t:R.d[0],num:true}]
+        ];
+        const testTxt = useex
+          ? `Exact binomial test on the ${R.nd[0]} discordant pairs, <i>p</i> ${pFmt(R.pex[0])}`
+          : `McNemar \u03C7\u00B2(1) = ${f2(R.chi2[0])}, <i>p</i> ${pFmt(R.pchi[0])}`;
+        const testTxtP = useex
+          ? `Exact binomial test on the ${R.nd[0]} discordant pairs, p ${pFmt(R.pex[0])}`
+          : `McNemar chi-square(1) = ${f2(R.chi2[0])}, p ${pFmt(R.pchi[0])}`;
+        const note = {
+          html:`<i>Note.</i> ${testTxt}, ${sidedTxt(env.alt)}; <i>n</i> = ${R.n[0]} pairs. Difference in the proportion of ${su} (${preName} \u2212 ${postName}) = ${nzsig(R.D[0])}, ${ci} Newcombe paired CI [${nzsig(R.DL[0])}, ${nzsig(R.DU[0])}]. Paired odds ratio (b/c) = ${fci(R.orv[0])}, ${ci} exact CI [${fci(R.orl[0])}, ${fci(R.oru[0])}].`,
+          plain:`Note. ${testTxtP}, ${sidedTxt(env.alt)}; n = ${R.n[0]} pairs. Difference in the proportion of ${su} (${preName} - ${postName}) = ${nzsig(R.D[0])}, ${ci} Newcombe paired CI [${nzsig(R.DL[0])}, ${nzsig(R.DU[0])}]. Paired odds ratio (b/c) = ${fci(R.orv[0])}, ${ci} exact CI [${fci(R.orl[0])}, ${fci(R.oru[0])}].`
+        };
+        const main = buildAPA({ title:`Paired Contingency Table and McNemar's Test of ${preName} vs ${postName} (success = ${su})`, headers, rows, note });
+        document.getElementById('console').textContent = consoleText;
+        document.getElementById('apa').innerHTML = main.screenHtml;
+        lastResult = { plain: main.plain, htmlTable: main.copyHtml };
+        document.getElementById('outStep').classList.remove('hidden');
+        const methodNote = `<b>Why these methods.</b> McNemar's test uses only the discordant pairs (b = ${R.b[0]}, c = ${R.cc[0]}) \u2014 pairs that changed \u2014 because concordant pairs carry no information about a shift. The \u03C7\u00B2 version is uncorrected, consistent with the tool's other \u03C7\u00B2 tests; when the discordant count is small (b + c &lt; 25) the tool reports the exact binomial test on the discordant pairs instead \u2014 the paired analogue of Fisher's exact. The difference CI is Newcombe's paired score method (method 10), which uses Wilson intervals for each marginal proportion with a continuity-corrected estimate of the within-pair correlation (Newcombe, 1998, <i>Statistics in Medicine</i>, 17, 2635\u20132650). The paired odds ratio b/c is the conditional ML estimate, with an exact CI from the binomial distribution of b given b + c.`;
+        const mn=document.getElementById('methodNote'); mn.innerHTML=methodNote; mn.classList.remove('hidden');
+        setStatus(`Done. ${used} rows used${dropped?`, ${dropped} dropped for missing values`:''}.`);
+      } finally { await shelter.purge(); }
+    }
+  }
+};
+
+/* ============================ WebR boot ============================ */
+const statusEl = document.getElementById('status'), runBtn = document.getElementById('runBtn');
+let webR = null, webRReady = false;
+function setStatus(msg,{busy=false,err=false}={}){
+  statusEl.className='status'+(busy?' busy':'')+(err?' err':'');
+  statusEl.innerHTML=(busy?'<span class="dot"></span>':'')+msg;
+}
+(async ()=>{
+  setStatus('Loading the R runtime… (first load downloads ~30 MB; cached afterward)',{busy:true});
+  try{ webR=new WebR(); await webR.init(); webRReady=true; setStatus('R is ready.'); validate(); }
+  catch(e){ setStatus('Could not start R: '+e.message+'. If this persists, the network may be blocking the WebR CDN.',{err:true}); }
+})();
+
+/* ============================ CSV parsing ============================ */
+let columns = {}, headers = [];
+/* RFC 4180 parser. Splitting on ',' breaks on any quoted field that contains a
+   comma, which Canvas gradebook exports are full of: assignment titles like
+   "HW Mod 9 - Hypotheses, Type I, and Type II Error" and student names in
+   "Last, First" form. A naive split shifts every column after the first such
+   field, and shifts the header row by a different amount than the data rows. */
+function parseCSV(text){
+  text = text.replace(/^\uFEFF/,'');
+  const rows=[]; let row=[], field='', quoted=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(quoted){
+      if(c==='"'){ if(text[i+1]==='"'){ field+='"'; i++; } else quoted=false; }
+      else field+=c;                       // commas and newlines are literal here
+    }
+    else if(c==='"'){ quoted=true; }
+    else if(c===','){ row.push(field); field=''; }
+    else if(c==='\n'||c==='\r'){
+      if(c==='\r'&&text[i+1]==='\n') i++;
+      row.push(field); rows.push(row); row=[]; field='';
+    }
+    else field+=c;
+  }
+  if(field!==''||row.length){ row.push(field); rows.push(row); }
+
+  const data = rows.map(r=>r.map(c=>c.trim())).filter(r=>r.some(c=>c!==''));
+  if(!data.length) return {hdr:[], cols:{}};
+
+  // Column keys must be unique: cols is keyed by name, so repeated headers
+  // would otherwise silently overwrite one another.
+  const used={};
+  const hdr = data[0].map((h,i)=>{
+    let name = h || ('Column '+(i+1));
+    while(used[name]) name = h + ' (' + (++used[h]) + ')';
+    used[name]=1; if(!used[h]) used[h]=1;
+    return name;
+  });
+
+  const cols={}; hdr.forEach(h=>cols[h]=[]);
+  for(let r=1;r<data.length;r++){
+    hdr.forEach((h,j)=>cols[h].push(data[r][j]===undefined?'':data[r][j]));
+  }
+  return {hdr, cols};
+}
+const NA = new Set(['','NA','N/A','NaN','.','null','NULL']);
+const isNA = v => NA.has(String(v).trim());
+const isNumericCol = vals => { let seen=0; for(const v of vals){ if(isNA(v))continue; seen++; if(!Number.isFinite(Number(v)))return false; } return seen>0; };
+const levelsOf = vals => { const s=new Set(); for(const v of vals){ if(!isNA(v))s.add(v.trim()); } return [...s]; };
+
+/* ============================ UI wiring ============================ */
+const testSel = document.getElementById('testSel');
+const uploadStep = document.getElementById('uploadStep');
+const roleStep = document.getElementById('roleStep');
+const rolesContainer = document.getElementById('rolesContainer');
+const roleWarn = document.getElementById('roleWarn');
+const drop = document.getElementById('drop'), fileInput = document.getElementById('file');
+
+// Sectioned menu (per Dropdown_Menu_Layout): optgroups with course-facing names.
+// Option text here overrides each module's internal label.
+const MENU_SECTIONS = [
+  ['Exploratory Data Analysis', [
+    ['eda', 'Summary statistics + plots']]],
+  ['One-Sample Tests', [
+    ['onesample', 't-test for a mean'],
+    ['oneprop',   'z-test for a proportion']]],
+  ['Two-Sample Tests \u2014 Dependent', [
+    ['paired',  'Paired t-test for mean difference \u2014 repeated measures/matched pairs'],
+    ['mcnemar', "McNemar's test for difference between paired proportions"]]],
+  ['Two-Sample Tests \u2014 Independent', [
+    ['ind_means', "Welch's t-test for difference between means"],
+    ['twoprop',   'z-test for difference between proportions']]],
+  ['Chi-square & Exact Tests', [
+    ['gof',     'Goodness of Fit (GOF)'],
+    ['emt_gof', 'Exact Multinomial Goodness of Fit (GOF, expected counts < 5)'],
+    ['chisq',   'Independence/Homogeneity'],
+    ['fisher',  "Fisher's exact test (independence, expected counts < 5)"]]],
+  ['Regression', [
+    ['linreg',  'Simple Linear Regression']]],
+  ['ANOVA', [
+    ['welch_anova', "One-way Welch's ANOVA (Games-Howell all pairwise differences)"]]]
+];
+const inMenu = new Set();
+MENU_SECTIONS.forEach(([secLabel, items])=>{
+  const og = document.createElement('optgroup'); og.label = secLabel;
+  items.forEach(([id, text])=>{
+    if(!TESTS[id]) return;
+    const o = document.createElement('option'); o.value = id; o.textContent = text;
+    og.appendChild(o); inMenu.add(id);
+  });
+  if(og.children.length) testSel.appendChild(og);
+});
+// safety net: any module not listed above still appears
+const leftovers = Object.keys(TESTS).filter(id=>!inMenu.has(id));
+if(leftovers.length){
+  const og = document.createElement('optgroup'); og.label = 'Other';
+  leftovers.forEach(id=>{ const o=document.createElement('option'); o.value=id; o.textContent=TESTS[id].label; og.appendChild(o); });
+  testSel.appendChild(og);
+}
+
+const edaPaletteEl = document.getElementById('edaPalette');
+Object.entries(PALETTES).forEach(([k,p])=>{ const o=document.createElement('option'); o.value=k; o.textContent=p.name; edaPaletteEl.appendChild(o); });
+edaPaletteEl.value = 'forest';
+function updateEdaControls(){
+  const t = TESTS[testSel.value];
+  document.getElementById('edaControls').classList.toggle('hidden', testSel.value!=='eda');
+  document.getElementById('confControls').classList.toggle('hidden', testSel.value==='eda');
+  document.getElementById('altControls').classList.toggle('hidden', !(t && t.sided));
+  document.getElementById('adjControls').classList.toggle('hidden', !(t && t.multiplicity));
+}
+function currentConf(){ return Number(document.getElementById('confSel').value); }
+const fci = x => Number.isFinite(Number(x)) ? f2(x) : (Number(x)<0 ? MINUS+'\u221E' : '\u221E');
+const sidedTxt = a => a==='less' ? 'one-sided (less)' : a==='greater' ? 'one-sided (greater)' : 'two-sided';
+// Both EDA plot options redraw from the data already in R, with no re-upload.
+async function redrawEda(doneMsg){
+  if(testSel.value!=='eda' || !lastEda) return;
+  runBtn.disabled=true;
+  try{ await drawEDA(lastEda.env, lastEda.cols, lastEda.active); setStatus(doneMsg); }
+  catch(e){ setStatus('R error: '+e.message,{err:true}); }
+  finally{ runBtn.disabled=false; }
+}
+edaPaletteEl.addEventListener('change', ()=>redrawEda('Palette updated.'));
+document.getElementById('edaEcdf').addEventListener('change', ()=>redrawEda('Plots updated.'));
+
+testSel.addEventListener('change', ()=>{
+  const t = TESTS[testSel.value];
+  document.getElementById('outStep').classList.add('hidden');
+  document.getElementById('edaOut').classList.add('hidden');
+  document.getElementById('testPlots').classList.add('hidden');
+  if(!t){ uploadStep.classList.add('hidden'); roleStep.classList.add('hidden'); return; }
+  document.getElementById('dropHint').textContent = t.dropHint;
+  uploadStep.classList.remove('hidden');
+  updateEdaControls();
+  if(headers.length){ renderRoles(); roleStep.classList.remove('hidden'); }
+});
+
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('armed');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('armed');}));
+drop.addEventListener('drop',e=>{ if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]); });
+
+// Explicit picker button (primary path on iPad/touch, where dragging is awkward).
+const pickBtn = document.getElementById('pickBtn');
+pickBtn.addEventListener('click', e=>{ e.stopPropagation(); fileInput.click(); });
+// The rest of the box stays clickable too; stopPropagation above avoids a double open.
+drop.addEventListener('click', e=>{ if(e.target !== fileInput) fileInput.click(); });
+
+fileInput.addEventListener('change',e=>{
+  if(e.target.files.length) handleFile(e.target.files[0]);
+  // Clear the value so re-picking the same filename fires 'change' again.
+  e.target.value = '';
+});
+
+function handleFile(file){
+  document.getElementById('filename').textContent = file.name;
+  const r=new FileReader();
+  r.onload=()=>{ const {hdr,cols}=parseCSV(r.result); headers=hdr; columns=cols;
+    if(TESTS[testSel.value]){ renderRoles(); roleStep.classList.remove('hidden'); } };
+  r.readAsText(file);
+}
+
+function eligible(kind){
+  if(kind==='numeric') return headers.filter(h=>isNumericCol(columns[h]));
+  if(kind==='group2')  return headers.filter(h=>levelsOf(columns[h]).length===2);
+  if(kind==='group_any') return headers.filter(h=>{const k=levelsOf(columns[h]).length; return k>=2 && k<=12;});
+  if(kind==='group_anova') return headers.filter(h=>{const k=levelsOf(columns[h]).length; return k>=3 && k<=12;});
+  if(kind==='categorical') return headers.filter(h=>{const k=levelsOf(columns[h]).length; return k>=2 && k<=30;});
+  if(kind==='predictor') return headers.filter(h=> isNumericCol(columns[h]) || (levelsOf(columns[h]).length>=2 && levelsOf(columns[h]).length<=30));
+  return headers.slice();
+}
+function renderRoles(){
+  const t = TESTS[testSel.value];
+  let html = t.roles.map(role=>{
+    const opts = eligible(role.kind);
+    let list = opts.map(h=>`<option>${h}</option>`).join('');
+    if(role.optional) list = `<option value="">— none —</option>` + list;
+    return `<div><label class="fld" for="role_${role.key}">${role.label}</label>
+            <select data-role="${role.key}" id="role_${role.key}">${list||'<option value="">(no eligible column)</option>'}</select></div>`;
+  }).join('');
+  if(t.params) html += t.params.map(pp=>{
+    if(pp.type==='level') return `<div><label class="fld" for="param_${pp.key}">${pp.label}</label>
+     <select data-param="${pp.key}" id="param_${pp.key}"></select></div>`;
+    const ty = pp.type==='text' ? 'text' : 'number';
+    const step = ty==='number' ? ' step="any"' : '';
+    return `<div><label class="fld" for="param_${pp.key}">${pp.label}</label>
+     <input type="${ty}"${step} data-param="${pp.key}" id="param_${pp.key}" value="${pp.default}"></div>`;
+  }).join('');
+  if(t.levelsPreview) html += `<div id="levelHint" class="hint" style="grid-column:1/-1; margin-top:2px"></div>`;
+  rolesContainer.innerHTML = html;
+  // sensible defaults + listeners
+  t.roles.forEach(role=>{
+    const sel = rolesContainer.querySelector(`[data-role="${role.key}"]`);
+    const def = t.defaults[role.key];
+    if(def && [...sel.options].some(o=>o.value===def)) sel.value=def;
+    sel.addEventListener('change', validate);
+    if(t.levelsPreview) sel.addEventListener('change', updateLevelHint);
+  });
+  if(t.params){
+    updateLevelParams();
+    t.params.forEach(pp=>{
+      const el = rolesContainer.querySelector(`[data-param="${pp.key}"]`);
+      el.addEventListener(pp.type==='level' ? 'change' : 'input', validate);
+      if(pp.type==='level'){
+        const src = rolesContainer.querySelector(`[data-role="${pp.fromRole}"]`);
+        if(src) src.addEventListener('change', updateLevelParams);
+      }
+    });
+  }
+  runBtn.textContent = t.runLabel || 'Run analysis';
+  if(t.extraHtml){ const d=document.createElement('div'); d.style.gridColumn='1/-1'; d.innerHTML=t.extraHtml; rolesContainer.appendChild(d); }
+  if(t.wireExtra) t.wireExtra();
+  updateEdaControls();
+  updateLevelHint();
+  validate();
+}
+
+function mlrPopulateCustom(){
+  const wrap = document.getElementById('mlrCustom'); if(!wrap) return;
+  const preds = ['predictor1','predictor2','predictor3','predictor4']
+    .map(k=>rolesContainer.querySelector(`[data-role="${k}"]`))
+    .filter(s=>s && s.value).map(s=>s.value);
+  const uniq = [...new Set(preds)];
+  const combos = [];
+  for(let i=0;i<uniq.length;i++) for(let j=i+1;j<uniq.length;j++) combos.push([uniq[i],uniq[j]]);
+  for(let i=0;i<uniq.length;i++) for(let j=i+1;j<uniq.length;j++) for(let k=j+1;k<uniq.length;k++) combos.push([uniq[i],uniq[j],uniq[k]]);
+  const prev = new Set([...wrap.querySelectorAll('input:checked')].map(c=>c.value));
+  wrap.innerHTML = combos.length
+    ? '<div class="fld" style="margin-bottom:6px">Interaction terms to include</div>' + combos.map(c=>{
+        const v=c.join('|'), lab=c.join(' \u00D7 ');
+        return `<label style="display:inline-flex;align-items:center;gap:6px;margin:2px 12px 2px 0;font-weight:400"><input type="checkbox" data-inter value="${v}"${prev.has(v)?' checked':''}> ${lab}</label>`;
+      }).join('')
+    : '<span class="hint">Select at least two predictors to form interactions.</span>';
+}
+
+/* ---------------------------- plot cards ---------------------------- */
+/* One card: caption row with its own copy button, then the canvas.
+   Shared by EDA and by any module that returns plots. */
+function buildPlotCard(img, caption){
+  const card = document.createElement('div'); card.className = 'plotcard';
+
+  const cv = document.createElement('canvas');
+  cv.width = img.width; cv.height = img.height;
+  cv.getContext('2d').drawImage(img, 0, 0);
+
+  const row = document.createElement('div'); row.className = 'caprow';
+  const cap = document.createElement('p'); cap.className = 'cap'; cap.textContent = caption;
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = 'copy'; btn.textContent = 'Copy plot';
+  btn.setAttribute('aria-label', 'Copy the ' + caption + ' plot to the clipboard');
+  btn.addEventListener('click', ()=>copyCanvas(cv, btn, caption));
+
+  row.appendChild(cap); row.appendChild(btn);
+  card.appendChild(row); card.appendChild(cv);
+  return card;
+}
+
+/* Safari (iPadOS included) revokes clipboard permission if we await the blob
+   before calling write(), so ClipboardItem gets the promise itself. */
+function copyCanvas(cv, btn, caption){
+  const back = ()=>setTimeout(()=>btn.textContent='Copy plot', 1600);
+  if(navigator.clipboard && window.ClipboardItem){
+    const blob = new Promise(res=>cv.toBlob(res,'image/png'));
+    navigator.clipboard.write([ new ClipboardItem({'image/png': blob}) ])
+      .then(()=>{ btn.textContent='Copied \u2713'; back(); })
+      .catch(()=>saveCanvas(cv, btn, caption));
+  } else { saveCanvas(cv, btn, caption); }
+}
+
+/* Fallback where image clipboard writes are unavailable: hand over the PNG. */
+function saveCanvas(cv, btn, caption){
+  const slug = (caption||'plot').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'plot';
+  try{
+    cv.toBlob(b=>{
+      const url = URL.createObjectURL(b);
+      const a = document.createElement('a');
+      a.href = url; a.download = slug + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 10000);
+    }, 'image/png');
+    btn.textContent = 'Saved PNG \u2713'; setTimeout(()=>btn.textContent='Copy plot', 2000);
+  }catch(e){
+    btn.textContent = 'Long-press the plot'; setTimeout(()=>btn.textContent='Copy plot', 2400);
+  }
+}
+
+function renderPlotsInto(images, captions){
+  const wrap = document.getElementById('testPlots'); wrap.innerHTML='';
+  if(!images || !images.length){ wrap.classList.add('hidden'); return; }
+  images.forEach((img,i)=>{
+    wrap.appendChild(buildPlotCard(img, captions[i]||('Plot '+(i+1))));
+  });
+  wrap.classList.remove('hidden');
+}
+
+function updateLevelParams(){
+  const t = TESTS[testSel.value];
+  if(!t.params) return;
+  t.params.forEach(pp=>{
+    if(pp.type!=='level') return;
+    const sel = rolesContainer.querySelector(`[data-param="${pp.key}"]`);
+    const src = rolesContainer.querySelector(`[data-role="${pp.fromRole}"]`);
+    const colName = src ? src.value : '';
+    const lv = (colName && columns[colName]) ? levelsOf(columns[colName]).slice().sort() : [];
+    const prev = sel.value;
+    sel.innerHTML = lv.map(l=>`<option>${l}</option>`).join('');
+    if(lv.includes(prev)) sel.value = prev;
+    else if(pp.default==='last' && lv.length) sel.value = lv[lv.length-1];
+    else if(pp.default==='first' && lv.length) sel.value = lv[0];
+  });
+}
+
+function updateLevelHint(){
+  const el = document.getElementById('levelHint');
+  if(!el) return;
+  const t = TESTS[testSel.value];
+  const sel = rolesContainer.querySelector(`[data-role="${t.levelsPreview}"]`);
+  const colName = sel ? sel.value : '';
+  if(colName && columns[colName]){
+    const lv = levelsOf(columns[colName]).slice().sort();
+    el.innerHTML = `Categories in order: ${lv.map(x=>`<b>${x}</b>`).join(', ')}.<br>This order is alphabetical, which matches R for ordinary text or number-coded labels. If labels ever have unusual capitalization or leading symbols, R's ordering (shown in the output table) is the authoritative one.`;
+  } else { el.textContent=''; }
+}
+
+function currentCols(){
+  const map={}; rolesContainer.querySelectorAll('[data-role]').forEach(s=>map[s.dataset.role]=s.value); return map;
+}
+function validate(){
+  const t = TESTS[testSel.value];
+  if(!t || !headers.length){ runBtn.disabled=true; return; }
+  const cols = currentCols();
+  let ok = webRReady, msg='';
+  for(const role of t.roles){ if(!role.optional && !cols[role.key]) ok=false; }
+  const chosen = t.roles.map(r=>cols[r.key]).filter(v=>v);
+  if(ok && new Set(chosen).size !== chosen.length){ ok=false; msg='Each role needs a different column.'; }
+  for(const role of t.roles){
+    if(role.kind==='group2' && cols[role.key] && levelsOf(columns[cols[role.key]]).length!==2){ ok=false; msg='The group column must have exactly 2 levels.'; }
+  }
+  if(t.params) for(const pp of t.params){
+    if((pp.type||'number')!=='number') continue;
+    const el = rolesContainer.querySelector(`[data-param="${pp.key}"]`);
+    if(pp.optional && el && el.value==='') continue;
+    if(!el || el.value==='' || !Number.isFinite(Number(el.value))){ ok=false; }
+  }
+  roleWarn.textContent = msg;
+  runBtn.disabled = !ok;
+}
+
+/* ============================ run ============================ */
+let lastResult = null;
+runBtn.addEventListener('click', async ()=>{
+  const t = TESTS[testSel.value];
+  runBtn.disabled=true; setStatus('Running in R…',{busy:true});
+  document.getElementById('testPlots').classList.add('hidden');
+  const cols = currentCols();
+  const active = t.roles.filter(r=>cols[r.key]);   // skip optional roles left empty
+
+  // gather + listwise NA drop across the active role columns
+  const rawLen = columns[cols[active[0].key]].length;
+  const env = {}; active.forEach(r=>env[r.key]=[]);
+  let dropped=0;
+  for(let i=0;i<rawLen;i++){
+    let keep=true;
+    for(const role of active){ const v=columns[cols[role.key]][i];
+      if(isNA(v) || (role.kind==='numeric' && !Number.isFinite(Number(v)))){ keep=false; break; } }
+    if(!keep){ dropped++; continue; }
+    for(const role of active){ const v=columns[cols[role.key]][i];
+      env[role.key].push(role.kind==='numeric' ? Number(v) : String(v).trim()); }
+  }
+  const used = rawLen - dropped;
+
+  // scalar parameters (e.g. hypothesized mean) become length-1 R values
+  if(t.params) t.params.forEach(pp=>{
+    const val = rolesContainer.querySelector(`[data-param="${pp.key}"]`).value;
+    env[pp.key] = (pp.type==='text'||pp.type==='level') ? String(val)
+                : (pp.optional && val==='') ? NaN : Number(val);
+  });
+  active.forEach(r=>{ env[r.key+'_name'] = cols[r.key]; });   // column names for R-side labels
+  env.conf = currentConf();   // confidence level available to every module's R
+  env.alt = t.sided ? document.getElementById('altSel').value : 'two.sided';   // alternative hypothesis (modules that declare sided)
+  env.bonf = (t.multiplicity && document.getElementById('bonfChk').checked) ? 1 : 0;   // multiplicity switch (modules that declare multiplicity)
+
+  // custom-run modules (EDA) manage their own output area
+  if(t.run){
+    try{ await t.run({env, cols, active, used, dropped}); }
+    catch(e){ setStatus('R error: '+e.message,{err:true}); }
+    finally{ runBtn.disabled=false; }
+    return;
+  }
+
+  document.getElementById('edaOut').classList.add('hidden');
+  if(t.packages){
+    for(const pkg of t.packages){
+      if(!installed.has(pkg)){ setStatus(`Installing ${pkg} (one-time download)…`,{busy:true}); await webR.installPackages([pkg]); installed.add(pkg); }
+    }
+    setStatus('Running in R…',{busy:true});
+  }
+  const shelter = await new webR.Shelter();
+  try{
+    const cap = await shelter.captureR(t.rProgram, { env, captureGraphics:{ width:820, height:460 } });
+    const consoleText = cap.output.filter(o=>o.type==='stdout'||o.type==='stderr').map(o=>o.data).join('\n');
+    const vals = await cap.result.toArray();
+    const R={}; t.resultKeys.forEach((k,i)=>R[k]=vals[i]);
+
+    const ctx = { cols, levels:{}, conf: env.conf, env };
+    t.roles.forEach(role=>{ if(role.kind==='group2') ctx.levels[role.key]=levelsOf(columns[cols[role.key]]).sort(); });
+
+    const out = t.render(R, ctx);
+    document.getElementById('console').textContent = consoleText;
+    document.getElementById('apa').innerHTML = out.screenHtml;
+    lastResult = { plain: out.plain, htmlTable: out.copyHtml };
+    // any plots the module drew
+    const plotsWrap = document.getElementById('testPlots'); plotsWrap.innerHTML='';
+    const imgs = cap.images || [];
+    if(imgs.length){
+      const caps = t.plotCaptions || [];
+      imgs.forEach((img,i)=>{
+        plotsWrap.appendChild(buildPlotCard(img, caps[i]||('Plot '+(i+1))));
+      });
+      plotsWrap.classList.remove('hidden');
+    } else { plotsWrap.classList.add('hidden'); }
+    document.getElementById('outStep').classList.remove('hidden');
+    const mn=document.getElementById('methodNote');
+    if(t.methodNote){ mn.innerHTML=t.methodNote; mn.classList.remove('hidden'); } else { mn.classList.add('hidden'); }
+    setStatus(`Done. ${used} rows analysed${dropped?`, ${dropped} dropped for missing values`:''}.`);
+  }catch(e){ setStatus('R error: '+e.message,{err:true}); }
+  finally{ await shelter.purge(); runBtn.disabled=false; }
+});
+
+/* ============================ copy ============================ */
+function wireCopy(btnId, getPayload){
+  const btn = document.getElementById(btnId);
+  if(!btn) return;
+  btn.addEventListener('click', async ()=>{
+    const payload = getPayload();
+    if(!payload) return;
+    try{
+      if(navigator.clipboard && window.ClipboardItem){
+        await navigator.clipboard.write([new ClipboardItem({
+          'text/html':  new Blob([payload.htmlTable],{type:'text/html'}),
+          'text/plain': new Blob([payload.plain],{type:'text/plain'})
+        })]);
+      } else { await navigator.clipboard.writeText(payload.plain); }
+      btn.textContent='Copied ✓'; setTimeout(()=>btn.textContent='Copy table',1600);
+    }catch(e){ btn.textContent='Press Ctrl/Cmd-C'; setTimeout(()=>btn.textContent='Copy table',2400); }
+  });
+}
+wireCopy('copyBtn',    ()=>lastResult);
+wireCopy('edaCopyBtn', ()=>lastEdaStats);
+</script>
+</body>
+</html>
