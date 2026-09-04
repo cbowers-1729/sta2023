@@ -197,8 +197,80 @@
   <footer>Runs locally in your browser: no install, no server, no data leaves your machine. © 2026 Christian Bowers · PolyForm Noncommercial 1.0.0, free for noncommercial use; not for sale.</footer>
 </div>
 
+<!-- ===================== browser capability check =====================
+     A classic (non-module) script, so it still runs in browsers too old to support
+     ES modules. Those browsers silently ignore the type="module" block below and
+     would otherwise show the page layout doing nothing, with no explanation. -->
+<script>
+(function () {
+  var RETRY_MS = 6000;              // let coi-serviceworker install and reload first
+  var FLAG = 'sta-coi-retry';
+
+  function flagGet(){ try { return sessionStorage.getItem(FLAG); } catch(e){ return null; } }
+  function flagSet(v){ try { v ? sessionStorage.setItem(FLAG,'1') : sessionStorage.removeItem(FLAG); } catch(e){} }
+
+  function unsupported(reason){
+    var wrap = document.querySelector('.wrap');
+    if (!wrap) return;
+    wrap.innerHTML =
+      '<header>' +
+        '<div class="tag">STA-2023 &middot; Elementary Statistics</div>' +
+        '<h1>This browser cannot run the tool</h1>' +
+      '</header>' +
+      '<p>' + reason + '</p>' +
+      '<p><b>On a Windows or Mac laptop:</b> install ' +
+        '<a href="https://www.google.com/chrome/">Chrome</a> or ' +
+        '<a href="https://www.mozilla.org/firefox/">Firefox</a> and open this page there. ' +
+        'That fixes it in almost every case, including a Mac whose built-in Safari is too ' +
+        'old to update.</p>' +
+      '<p><b>On an iPhone or iPad:</b> switching browsers will not help, because every ' +
+        'browser on those devices uses the same engine as Safari. Update the device to ' +
+        'iOS 15.2 or later, or use a laptop.</p>' +
+      '<p><b>On Android:</b> open this page in Chrome or Firefox directly, rather than ' +
+        'tapping the link inside another app.</p>' +
+      '<p class="hint">Requires Chrome 68+, Edge 79+, Firefox 79+, or Safari 15.2+ ' +
+        '(December 2021).</p>';
+  }
+
+  function check(){
+    if (typeof WebAssembly === 'undefined') {
+      unsupported('This browser does not support WebAssembly, which the tool needs in order to run R.');
+      return;
+    }
+    if (typeof SharedArrayBuffer === 'undefined' || !window.crossOriginIsolated) {
+      // On a first visit coi-serviceworker installs itself and reloads the page once,
+      // so the page is legitimately not isolated for a moment. Wait before complaining.
+      if (!flagGet()) { flagSet(true); setTimeout(check, RETRY_MS); return; }
+      unsupported('This browser is missing a feature the tool needs (cross-origin isolation), ' +
+                  'which usually means it is a few years out of date.');
+      return;
+    }
+    flagSet(false);                 // isolated: clear the retry flag
+  }
+
+  window.__staUnsupported = unsupported;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', check);
+  } else {
+    check();
+  }
+})();
+</script>
+
+<script nomodule>
+  if (window.__staUnsupported) {
+    window.__staUnsupported('This browser does not support JavaScript modules, which means ' +
+                            'it is several years out of date.');
+  }
+</script>
+
 <script type="module">
-import { WebR } from 'https://webr.r-wasm.org/latest/webr.mjs';
+// Pinned deliberately. 'latest' moves under the tool without warning: webR 0.6.0
+// (May 2026) changed to R 4.6.0 and a new Emscripten, and package binaries are not
+// compatible across that boundary. Bump this between terms, never during one, and
+// retest Welch's t, an EDA with plots (ggplot2), and a chi-square (effectsize).
+import { WebR } from 'https://webr.r-wasm.org/v0.6.0/webr.mjs';
 
 /* ============================ shared formatters ============================ */
 // APA 7 (6.36): keep the leading zero when a statistic CAN reach 1 in absolute
